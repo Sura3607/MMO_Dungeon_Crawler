@@ -1,0 +1,2 @@
+**MMO Tank Dungeon** là game bắn súng góc nhìn từ trên xuống (top-down), nơi người chơi điều khiển một chiếc xe tăng chiến đấu qua các tầng hầm ngục (dungeon) chứa đầy quái vật và boss.
+Mục tiêu của người chơi là **tiến sâu nhất có thể**, tiêu diệt boss, thu thập vàng để nâng cấp xe và tồn tại lâu nhất.

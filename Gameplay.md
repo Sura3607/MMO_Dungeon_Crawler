@@ -1,257 +1,204 @@
+# GAMEPLAY CHI TIẾT — MMO TANK DUNGEON
 
-## 1. Khu vực trong game
+## 1. Khái quát
 
-### 1.1. Khu vực An Toàn (Safe Zone)
+**MMO Tank Dungeon** là game bắn súng góc nhìn từ trên xuống (top-down), nơi người chơi điều khiển một chiếc xe tăng chiến đấu qua các tầng hầm ngục (dungeon) chứa đầy quái vật và boss.
+Mục tiêu của người chơi là **tiến sâu nhất có thể**, tiêu diệt boss, thu thập vàng để nâng cấp xe và tồn tại lâu nhất.
 
-* Là **thị trấn / căn cứ** nơi người chơi không thể bị tấn công.
-* Hoạt động chính:
+Game có ba chế độ:
 
-  * **Giao tiếp**: chat, whisper, nhóm (party).
-  * **NPC**: bán đồ, học kỹ năng, nhận nhiệm vụ.
-  * **Lập đội (Party)**: tối đa 4 người (tương ứng 4 vị trí).
-  * **Trade**: trao đổi item, vàng.
-
-### 1.2. Hầm Ngục (Dungeon)
-
-* Nơi diễn ra **chiến đấu** (PVE).
-* Được chia thành **các tầng (floor)** hoặc **phòng (room)**.
-* Có quái (monster) spawn dựa trên **seed của khu vực**.
-* Người chơi mất máu → cần Mục Sư hồi phục.
-* Khi cả đội chết → bị đưa trở lại Safe Zone (mất một phần exp).
-* Khi vượt dungeon → nhận thưởng exp, vàng, item.
+1. **Solo (1 người)**
+2. **Co-op (2 người)**
+3. **PvP (đấu tay đôi)**
 
 ---
 
-## 2. Vị trí nhân vật (Role / Class)
+## 2. Vòng lặp gameplay (Game Loop)
 
-Game có **4 vị trí cơ bản**. Người chơi chọn vai trò ngay từ khi tạo nhân vật (cố định, không đổi class).
+1. **Người chơi bắt đầu tại Safe Zone** — khu vực an toàn có:
 
-1. **Tiên Phong (Vanguard – Damage Dealer)**
+   * **Cửa hàng chính:** mua skin, đổi tank.
+   * **Cổng Dungeon:** dẫn vào ngục tối.
 
-   * Vai trò: sát thương cận chiến, dọn quái nhanh.
-   * Đặc điểm: máu trung bình, sát thương cao, phòng thủ vừa phải.
-   * Kỹ năng: combo chém, chém vòng, kỹ năng bạo kích.
+2. **Bước vào Dungeon:**
 
-2. **Đỡ Đòn (Tank)**
+   * Hệ thống sinh ra ngẫu nhiên bản đồ (map tile-based).
+   * Quái xuất hiện theo tầng (zone):
 
-   * Vai trò: chắn sát thương, giữ quái / boss.
-   * Đặc điểm: máu cao, giáp cao, sát thương thấp.
-   * Kỹ năng: khiêu khích, chắn, phản đòn.
+     * 1.1 → 1.2 → 1.3 → Boss 1
+     * 2.1 → 2.3 → Boss 2
+   * Mỗi tầng đều có tường, góc khuất, khu tối chỉ nhìn thấy bằng đèn xe.
 
-3. **Pháp Sư (Mage)**
+3. **Chiến đấu:**
 
-   * Vai trò: sát thương phép diện rộng.
-   * Đặc điểm: máu thấp, công phép cao, tầm xa.
-   * Kỹ năng: cầu lửa, băng trói, sét lan.
+   * Người chơi điều khiển xe tank di chuyển, xoay nòng súng độc lập, tiêu diệt quái.
+   * Nhặt vàng và vật phẩm hồi máu/đạn.
+   * Khi hết đạn: phải nạp lại (bấm R hoặc tự động nếu về 0).
 
-4. **Mục Sư (Priest)**
+4. **Sau khi hạ Boss:**
 
-   * Vai trò: hồi máu, buff đội.
-   * Đặc điểm: máu trung bình, công thấp, có phép hỗ trợ.
-   * Kỹ năng: hồi máu đơn, hồi máu nhóm, buff phòng thủ.
+   * Xuất hiện **Shop tạm thời trong dungeon** để nâng cấp:
 
----
+     * Damage, tốc độ bắn, tốc độ di chuyển, giáp, tầm sáng, v.v.
+   * Sau đó mở **cổng tiếp theo** dẫn tới tầng sau.
 
-## 3. Hệ thống kỹ năng
+5. **Khi chết:**
 
-### 3.1. Học kỹ năng
-
-* Người chơi học kỹ năng thông qua **sách kỹ năng** (mua ở NPC hoặc rớt trong dungeon).
-* Mỗi class có **kho kỹ năng riêng**.
-* Khi học xong, kỹ năng được gắn vào **skill bar** (tối đa 6 slot).
-
-### 3.2. Nâng cấp kỹ năng
-
-* Mỗi kỹ năng có **cấp độ giới hạn** (ví dụ cấp 5).
-* Khi chiến đấu, người chơi nhận **EXP kỹ năng**.
-* Người chơi có thể tự **chọn phân bổ EXP vào kỹ năng** mong muốn (thay vì auto).
-* Khi lên cấp kỹ năng:
-
-  * Damage/heal tăng.
-  * Mana cost/ cooldown giảm.
-  * Có thể mở hiệu ứng phụ (VD: skill cấp 3 thêm hiệu ứng làm chậm).
-
-### 3.3. Ví dụ kỹ năng
-
-* Vanguard: "Slash" (cắt đơn), "Whirlwind" (chém vòng), "Berserk" (tăng crit).
-* Tank: "Taunt" (ép quái tấn công mình), "Shield Wall" (giảm dmg 50%), "Counter" (phản dmg).
-* Mage: "Fireball" (sát thương đơn), "Frost Nova" (làm chậm quái quanh), "Chain Lightning".
-* Priest: "Heal" (1 người), "Group Heal" (nhiều người), "Blessing" (buff def).
+   * Game hiển thị **bảng tổng kết**: số quái hạ, tầng đạt được, vàng thu được, tổng thời gian sinh tồn.
+   * Người chơi quay lại Safe Zone.
 
 ---
 
-## 4. Hệ thống cấp độ (Level System)
+## 3. Cơ chế điều khiển
 
-### 4.1. Nhân vật
-
-* Mỗi nhân vật có **Level (Lv)**.
-* Khi hạ quái → nhận EXP nhân vật.
-* EXP cần để lên cấp tăng dần theo công thức (ví dụ `100 * Lv`).
-* Lên cấp → tăng máu, mana, chỉ số cơ bản.
-
-### 4.2. Phần thưởng khi đánh quái
-
-* Nếu quái **cao hơn level người chơi** → được EXP bonus (ví dụ +20%).
-* Nếu quái **thấp hơn** → EXP giảm theo chênh lệch (vd -10% mỗi level chênh).
-* Nếu chênh quá lớn (vd ≥ 5 level dưới) → gần như không có exp.
-
-### 4.3. EXP phân bổ
-
-* Người chơi có thể **dùng EXP chung để tăng kỹ năng** (giữa trận hoặc khi về Safe Zone).
-* Có thể **giữ lại EXP** để dùng dần, không bắt buộc phải phân bổ ngay.
+| Hành động            | Phím / Chuột           | Mô tả                                   |
+| -------------------- | ---------------------- | --------------------------------------- |
+| Di chuyển            | **WASD**               | Tank di chuyển 8 hướng                  |
+| Xoay nòng súng       | **Di chuyển chuột**    | Nòng xoay theo hướng trỏ chuột          |
+| Bắn                  | **Chuột trái**         | Bắn theo hướng nòng súng                |
+| Nạp đạn              | **R**                  | Bắt đầu hoặc hủy nạp đạn                |
+| Mở bản đồ nhỏ        | **Tab / M**            | (Tùy chọn) hiển thị mini-map lớn        |
+| Mua hàng / tương tác | **E hoặc click chuột** | Dùng tại cửa hàng hoặc vật thể đặc biệt |
 
 ---
 
-## 5. Hệ thống Party
+## 4. Cơ chế chiến đấu
 
-* Tối đa 4 người, mỗi vị trí **nên có đủ class khác nhau** để hiệu quả.
-* EXP chia theo damage đóng góp + hệ số class.
-* Item rơi ra có thể:
+### 4.1. Loại xe tăng
 
-  * Roll (xổ số ngẫu nhiên).
-  * Master loot (trưởng nhóm chọn).
+#### (1) Rapid Tank — Xe tốc độ cao
 
----
+* Bắn **2 viên đạn liên tiếp** tốc độ cao.
+* **Sát thương đơn mục tiêu**, nhưng DPS tốt.
+* Tốc độ di chuyển nhanh.
+* Thời gian nạp đạn ngắn.
+* Phù hợp đánh quái nhanh và né boss.
 
-## 6. Tiến trình cơ bản của một phiên chơi
+#### (2) Blast Tank — Xe pháo công nặng
 
-1. Người chơi login vào **Safe Zone**.
-2. Có thể đi **một mình** hoặc **lập đội** (4 người).
-3. Khi đội sẵn sàng → vào cổng Dungeon.
-4. Trong dungeon:
-
-   * Tiên phong / Tank dẫn đầu.
-   * Mage gây sát thương tầm xa.
-   * Priest hồi máu.
-   * Tiêu diệt quái / boss để nhận exp + loot.
-5. Khi xong dungeon hoặc bị chết → trở về Safe Zone.
-6. Người chơi dùng exp để **nâng cấp kỹ năng**, mua sách kỹ năng mới.
+* Bắn chậm, **gây sát thương nổ lan**.
+* Tốc độ di chuyển thấp.
+* Nạp đạn lâu nhưng sát thương cực cao.
+* Mỗi viên đạn nổ có bán kính ảnh hưởng 2–3m.
 
 ---
 
-## 7. Cân bằng cơ bản
+### 4.2. Quái vật
 
-* Tank + Priest là cần thiết để sống sót lâu.
-* Vanguard + Mage đảm bảo tốc độ clear quái.
-* Quái trong dungeon được thiết kế buộc cả 4 vai trò phải phối hợp.
+* Có nhiều loại:
 
----
-# Vật phẩm (Items)
-
-## Potion Nhỏ (Small Healing Potion)
-- Hiệu ứng: Hồi **50 HP**  
-- Tối đa giữ: **10**  
-- Cooldown: **5s**
-
-## Potion Lớn (Greater Healing Potion)
-- Hiệu ứng: Hồi **200 HP**  
-- Tối đa giữ: **3**  
-- Cooldown: **15s**
-
-## Mana Potion
-- Hiệu ứng: Hồi **50 MP**  
-- Tối đa giữ: **5**  
-- Cooldown: **10s**
-
-## Scroll of Protection
-- Hiệu ứng: Buff **giáp +20%** trong **30s**  
-- Tối đa giữ: **2**
-
-## Elixir of Fury
-- Hiệu ứng: Buff **damage +15%** trong **20s**  
-- Tối đa giữ: **2**
+  * **Runner:** lao nhanh về phía người chơi, ít máu.
+  * **Shooter:** bắn đạn thẳng, tầm xa trung bình.
+  * **Tanky:** chậm nhưng nhiều máu, có thể chắn đường.
+* Khi bị tiêu diệt có **tỷ lệ rơi vật phẩm**.
+* Số lượng và độ khó tăng theo tầng dungeon.
 
 ---
 
-# Sách kỹ năng (Skill Books)
+### 4.3. Boss
 
-## Vanguard (Tiên Phong)
-1. **Slash Book → Slash**
-   - Tiêu hao: **10 mana**
-   - Gây dmg đơn mục tiêu.  
+* Mỗi khu (zone cuối) có 1 boss.
+* Boss có 3 giai đoạn chiến đấu:
 
-2. **Whirlwind Book → Whirlwind**
-   - Tiêu hao: **25 mana**
-   - Quét vòng, sát thương nhiều mục tiêu.  
+  * **Phase 1:** Bắn đạn vòng quanh, tốc độ trung bình.
+  * **Phase 2:** Gọi quái phụ trợ, bắn đạn chùm.
+  * **Phase 3:** Bắn sóng năng lượng, tốc độ cao, sát thương cực mạnh.
+* Khi boss chết:
 
-3. **Berserk Book → Berserk**
-   - Tiêu hao: **50 mana**
-   - Buff **crit +30%** trong **10s**.  
-
-4. **Charge Book → Charge**
-   - Tiêu hao: **20 mana**
-   - Lao vào mục tiêu, **stun 1s**.  
-
-5. **Blood Strike Book → Blood Strike**
-   - Tiêu hao: **5% HP**
-   - Gây sát thương lớn theo **%HP đã mất**.  
+  * Rơi **vật phẩm hiếm hoặc nâng cấp đặc biệt**.
+  * Mở **Shop tầng boss**.
 
 ---
 
-## Tank (Đỡ Đòn)
-1. **Taunt Book → Taunt**
-   - Tiêu hao: **15 mana**
-   - Quái/boss buộc tấn công Tank trong **5s**.  
+## 5. Hệ thống tầm nhìn
 
-2. **Shield Wall Book → Shield Wall**
-   - Tiêu hao: **40 mana**
-   - Giảm **50% dmg** trong **8s**.  
+* Môi trường dungeon **tối hoàn toàn**.
+* Xe tank có **đèn pha hình nón** chiếu về hướng trước.
+* Chỉ thấy trong vùng chiếu sáng, phần còn lại là màu đen.
+* Có thể nâng cấp tầm nhìn qua shop:
 
-3. **Counter Book → Counter**
-   - Tiêu hao: **20 mana**
-   - Đỡ đòn, phản lại **50% dmg**.  
-
-4. **Stomp Book → Stomp**
-   - Tiêu hao: **30 mana**
-   - Dậm đất, **choáng xung quanh 2s**.  
-
-5. **Iron Skin Book → Iron Skin**
-   - Tiêu hao: **50 mana**
-   - Buff **giáp +40%** trong **15s**.  
+  * **Light Range:** tăng độ dài ánh sáng.
+  * **Light Cone:** mở rộng góc chiếu.
+  * **Rear Light:** thêm ánh sáng sau lưng.
 
 ---
 
-## Mage (Pháp Sư)
-1. **Fireball Book → Fireball**
-   - Tiêu hao: **20 mana**
-   - Gây dmg phép đơn.  
+## 6. Hệ thống vật phẩm và nâng cấp
 
-2. **Frost Nova Book → Frost Nova**
-   - Tiêu hao: **25 mana**
-   - AOE, **slow quái**.  
+### 6.1. Vật phẩm rơi (Pickup Items)
 
-3. **Chain Lightning Book → Chain Lightning**
-   - Tiêu hao: **30 mana**
-   - Gây dmg nhảy qua **3 mục tiêu**.  
+| Tên vật phẩm    | Tác dụng                                      |
+| --------------- | --------------------------------------------- |
+| **Repair Kit**  | Hồi 25–50% máu                                |
+| **Ammo Pack**   | Nạp đầy đạn                                   |
+| **Gold Coin**   | Dùng để mua nâng cấp                          |
+| **Radar Chip**  | Tăng tầm radar mini-map                       |
+| **Energy Core** | Buff tạm thời (tăng damage, tốc độ, ánh sáng) |
 
-4. **Arcane Shield Book → Arcane Shield**
-   - Tiêu hao: **40 mana**
-   - Hấp thụ dmg bằng **100 + 50% INT** trong **10s**.  
+### 6.2. Cửa hàng dungeon (Shop nâng cấp)
 
-5. **Meteor Book → Meteor**
-   - Tiêu hao: **80 mana**
-   - Gọi thiên thạch, dmg lớn **AOE**.  
+Sau mỗi boss, người chơi có thể mua bằng vàng:
+
+| Nâng cấp           | Tác dụng                 |
+| ------------------ | ------------------------ |
+| **Damage Upgrade** | +15% sát thương          |
+| **Fire Rate**      | +10% tốc độ bắn          |
+| **Movement Speed** | +10% tốc độ di chuyển    |
+| **Reload Speed**   | -20% thời gian nạp       |
+| **Armor Plating**  | Giảm 10% sát thương nhận |
+| **Light Range**    | Tăng 20% tầm sáng        |
+| **AOE Radius**     | (Tank pháo) +15% vùng nổ |
+| **Multi-Shot**     | (Tank rapid) +1 đường đạn|
+| **Ammo Capacity**  | +20% số đạn/clip         |
+* Các nâng cấp đặt biệt như **AOE Radius**, **Multi-Shot**  sẽ chỉ xuất hiện với loại tank tương ứng.
+---
+
+## 7. PvP Mode
+
+* 1 bản đồ nhỏ (arena), có tường, góc khuất và khu vực tối.
+* Mỗi người **3 mạng**.
+* Khi chết, respawn ngẫu nhiên nếu còn mạng.
+* Ai hết 3 mạng trước là thua.
+* Có vật phẩm sinh ngẫu nhiên (tăng tốc, tăng sát thương, hồi máu).
+* Radar hiển thị vị trí tương đối của đối thủ.
 
 ---
 
-## Priest (Mục Sư)
-1. **Heal Book → Heal**
-   - Tiêu hao: **15 mana**
-   - Hồi máu đơn.  
+## 8. Giao diện người chơi (UI/HUD)
 
-2. **Group Heal Book → Group Heal**
-   - Tiêu hao: **30 mana**
-   - Hồi máu toàn party.  
+| Vị trí            | Thành phần           | Nội dung hiển thị                                             |
+| ----------------- | -------------------- | ------------------------------------------------------------- |
+| **Trên trái**     | Thanh máu (HP) + đạn | Hiển thị máu còn lại và số đạn trong clip                     |
+| **Trên phải**     | Radar mini-map       | Chấm đỏ: địch / boss, chấm xanh: đồng đội, chấm lam: bản thân |
+| **Giữa dưới**     | Icon buff            | Các hiệu ứng tạm thời đang kích hoạt                          |
+| **Giữa màn hình** | Thông báo hành động  | “Reloading…”, “Boss incoming”                                 |
+| **Cuối game**     | Bảng tổng kết        | Kill count, tầng đạt được, vàng thu được, thời gian sống      |
 
-3. **Blessing Book → Blessing**
-   - Tiêu hao: **20 mana**
-   - Buff **DEF +10%** trong **20s**.  
+---
 
-4. **Revive Book → Revive**
-   - Tiêu hao: **100 mana + 20% HP caster**
-   - Hồi sinh đồng đội đã chết.  
+## 9. Cảm giác chơi (Player Experience)
 
-5. **Holy Wrath Book → Holy Wrath**
-   - Tiêu hao: **40 mana**
-   - Gây dmg phép ánh sáng **AOE**, bonus vs undead.  
+* **Hồi hộp** vì tầm nhìn hạn chế, chỉ thấy trong vùng sáng.
+* **Chiến thuật**: chọn nâng cấp phù hợp với lối chơi (tốc độ hay sát thương).
+* **Cảm giác tăng tiến:** mỗi lần vượt boss sẽ mạnh hơn, tiến xa hơn.
+* **Căng thẳng PvP:** do tầm nhìn tối, người chơi phải dựa vào radar và tiếng động để săn nhau.
+
+---
+
+## 10. Kết thúc và phần thưởng
+
+* Trò chơi kết thúc khi:
+
+  * Người chơi chết (Solo/Co-op).
+  * Hết mạng (PvP).
+* **Bảng tổng kết:**
+
+  * Tổng số tầng vượt qua.
+  * Tổng số quái/boss tiêu diệt.
+  * Vàng thu được.
+  * Điểm tổng kết (dùng để xếp hạng).
+* **Phần thưởng (Meta progression):**
+
+  * Vàng tổng cộng để mua tank mới / skin tại Safe Zone.
+
 

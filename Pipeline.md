@@ -1,232 +1,346 @@
-# 1. Phân tích Gameplay Tổng Quan
+## 1. Tổng Quan Kiến Trúc
 
-## Vòng lặp gameplay chính
+Kiến trúc chia 2 phần tách biệt:
+
+* **Server:** giữ toàn bộ logic gameplay thật, chịu trách nhiệm xử lý tick, combat, AI, dungeon, đồng bộ.
+* **Client:** chỉ xử lý hiển thị, render, input, và nhận snapshot từ server.
+
+Pipeline luân chuyển:
 
 ```
-Login → Safe Zone → Party → Dungeon → Combat → Loot → Return → Upgrade Skill → Repeat
+Client Input → Encode → Send Packet
+   ↓
+Server → Update Logic (Combat, Physics, AI)
+   ↓
+Server → Sync Snapshot (WorldState)
+   ↓
+Client → Interpolate + Render Frame
 ```
-
-* Safe Zone: giao tiếp, mua đồ, học kỹ năng, lập đội.
-* Dungeon: chiến đấu, phối hợp 4 class, diệt quái và boss, nhận loot/exp.
-* Khi chết: quay về Safe Zone, mất exp.
-* Khi thắng: nhận phần thưởng, tăng cấp nhân vật và kỹ năng.
 
 ---
 
-# 2. Phân tích Hệ Thống Tổng Thể
+## 2. Phân Tầng Hệ Thống
 
-| Hệ thống            | Mô tả                                                         | Thành phần chính                       |
-| ------------------- | ------------------------------------------------------------- | -------------------------------------- |
-| **Item System**     | Quản lý vật phẩm, cooldown, số lượng, hiệu ứng.               | Item DB, cooldown tracker, packet sync |
-| **Skill System**    | Quản lý kỹ năng, mana cost, damage, buff/debuff.              | Skill DB, combat logic                 |
-| **Entity System**   | Đại diện player, quái, boss với chỉ số HP/MP, vị trí, status. | Entity struct, update loop             |
-| **Combat System**   | Xử lý chiến đấu, tính toán damage/heal, trigger hiệu ứng.     | Damage formula, skill resolver         |
-| **Dungeon System**  | Tạo map, spawn quái, quản lý tiến trình dungeon.              | Map loader, monster spawner            |
-| **Party System**    | Quản lý nhóm 4 người, chia exp, loot.                         | Party manager, roll system             |
-| **Sync System**     | Đồng bộ client–server (vị trí, HP, skill).                    | Tick loop, delta update                |
-| **Chat System**     | Chat toàn, nhóm, whisper.                                     | Chat channel handler                   |
-| **Network System**  | Gửi/nhận packet TCP/UDP hoặc WebSocket.                       | Connection manager, packet parser      |
-| **Database System** | Lưu account, nhân vật, inventory.                             | PostgreSQL schema, Redis cache         |
+| Hệ thống                | Mô tả                                                        | Vị trí              | Thành phần chính                                  |
+| ----------------------- | ------------------------------------------------------------ | ------------------- | ------------------------------------------------- |
+| **Network System**      | Quản lý kết nối TCP + UDP, mã hóa/giải mã packet.            | **Server + Client** | TCP handler, UDP socket, packet parser            |
+| **Sync System**         | Tick loop đồng bộ entity state (vị trí, HP, ammo, hiệu ứng). | **Server + Client** | Tick delta, snapshot sender, client interpolation |
+| **Entity System**       | Quản lý tank, quái, đạn, boss.                               | **Server**          | Entity record, updateState, removeDead            |
+| **Physics System**      | Di chuyển, va chạm, giới hạn map.                            | **Server**          | Collider, velocity calc, wall check               |
+| **Combat System**       | Tính sát thương, lan nổ, đạn va chạm.                        | **Server**          | Damage formula, projectile handler                |
+| **AI System**           | Điều khiển quái, boss (chase, patrol, shoot).                | **Server**          | Behavior tree, pathfinding                        |
+| **Dungeon System**      | Tạo dungeon, spawn quái, điều khiển zone/boss.               | **Server**          | Procedural generator, spawn manager               |
+| **Item System**         | Quản lý vật phẩm rơi và shop dungeon.                        | **Server**          | Item repo, item drop resolver                     |
+| **Upgrade System**      | Cây nâng cấp tank, Multi-Shot / AOE Radius.                  | **Server**          | Modifier resolver, upgrade DB                     |
+| **Party / Room System** | Tạo phòng, join theo Room ID, PvP / Co-op.                   | **Server**          | Room manager, player registry                     |
+| **Chat System**         | Chat phòng hoặc toàn server.                                 | **Server + Client** | Message handler, broadcast queue                  |
+| **Database System**     | Lưu tài khoản, skin, vàng, lịch sử trận.                     | **Server**          | PostgreSQL / SQLite, Redis cache                  |
+| **Auth System**         | Đăng nhập, xác thực token.                                   | **Server + Client** | Token validator, session tracker                  |
+| **Render System**       | Vẽ map, tank, ánh sáng, hiệu ứng, radar.                     | **Client**          | Sprite renderer, light system                     |
+| **Input System**        | Nhận phím, chuột, gửi command.                               | **Client**          | Input capture, encode to packet                   |
+| **UI System**           | HUD, radar, shop, endgame summary.                           | **Client**          | Menu renderer, HUD controller                     |
+| **Audio System**        | Âm thanh bắn, nổ, boss, UI.                                  | **Client**          | Sound pool, event trigger                         |
+| **Effect System**       | Render particle, light trail, nổ.                            | **Client**          | Animation frame, effect timeline                  |
 
 ---
 
-# 3. Cấu Trúc Thư Mục Dự Án Haskell
+## 3. Pipeline Tick Server
+
+**Server Tick Loop (≈ 30–60 tick/s)**
 
 ```
-MMO-Project/
-├── Server/
-│   ├── Main.hs
-│   ├── Network/
-│   │   ├── Connection.hs
-│   │   ├── PacketHandler.hs
-│   │   └── SyncLoop.hs
-│   ├── Systems/
-│   │   ├── ItemSystem.hs
-│   │   ├── SkillSystem.hs
-│   │   ├── CombatSystem.hs
-│   │   ├── DungeonSystem.hs
-│   │   └── PartySystem.hs
-│   ├── Database/
-│   │   ├── DBInit.hs
-│   │   ├── PlayerRepo.hs
-│   │   ├── InventoryRepo.hs
-│   │   └── DungeonRepo.hs
-│   └── Utils/
-│       ├── Logger.hs
-│       └── Config.hs
+for each tick:
+  1. read all incoming PlayerCommand
+  2. update all Entities:
+       - apply Input → Physics
+       - apply AI → Combat
+       - spawn new objects
+  3. resolve collisions and projectiles
+  4. update world time, buffs, item timers
+  5. build WorldSnapshot (delta)
+  6. send snapshot via UDP
+```
+
+Tất cả logic này là **pure**, không IO.
+Phần IO duy nhất là Network + DB + Logger.
+
+---
+
+## 4. Pipeline Client
+
+**Client Loop:**
+
+```
+for each frame (~60fps):
+  1. capture Input (move, rotate, fire)
+  2. send PlayerCommand via UDP
+  3. receive WorldSnapshot
+  4. interpolate entity positions
+  5. render (map, light, tank, UI)
+  6. play sound/effect
+```
+
+Client không giữ “truth”, chỉ **hiển thị theo snapshot**.
+Nếu mất gói UDP, client tạm giữ state cũ và dự đoán (prediction).
+
+---
+
+## 5. Cấu Trúc Dự Án 
+
+```
+MMO_Dungeon_Crawler/
+├── server/
+│   ├── app/
+│   │   ├── Main.hs                        # Entry point khởi động server
+│   │   ├── ServerApp.hs                   # Hàm main logic (init system, loop, tick)
+│   │   └── CLI.hs                         # Command-line tool (chạy migration, reset DB)
+│   │
+│   ├── src/
+│   │   ├── Core/
+│   │   │   ├── Types.hs                   # Kiểu dữ liệu chung (Vec2, EntityID, Tick, Damage, ...)
+│   │   │   ├── Config.hs                  # Đọc file config server.yaml, database.yaml
+│   │   │   └── Logger.hs                  # Log system, format theo tick
+│   │   │
+│   │   ├── Network/
+│   │   │   ├── TCPServer.hs               # Quản lý kết nối TCP (login, shop, tạo phòng)
+│   │   │   ├── UDPServer.hs               # Quản lý UDP (realtime sync)
+│   │   │   ├── PacketParser.hs            # Parse/encode packet
+│   │   │   ├── Protocol.hs                # Định nghĩa gói tin, opcode
+│   │   │   └── SessionManager.hs          # Quản lý session, auth token
+│   │   │
+│   │   ├── Systems/
+│   │   │   ├── EntitySystem.hs            # Quản lý Tank, Enemy, Bullet, Boss
+│   │   │   ├── CombatSystem.hs            # Xử lý va chạm, damage, death
+│   │   │   ├── DungeonSystem.hs           # Sinh dungeon, spawn quái, boss
+│   │   │   ├── ItemSystem.hs              # Rơi vật phẩm, shop dungeon, nâng cấp
+│   │   │   ├── SkillSystem.hs             # Multi-Shot, Explosive, Buff/Passive
+│   │   │   ├── SyncSystem.hs              # Tick đồng bộ Client <-> Server
+│   │   │   ├── AISystem.hs                # Hành vi quái/boss
+│   │   │   ├── PartySystem.hs             # Quản lý nhóm (2 người chơi / PvP room)
+│   │   │   └── EffectSystem.hs            # Nổ, cháy, đèn, AOE effect logic
+│   │   │
+│   │   ├── Data/
+│   │   │   ├── Database.hs                # Kết nối PostgreSQL (persistent / esqueleto)
+│   │   │   ├── Models.hs                  # Định nghĩa model Player, Tank, Item, Inventory
+│   │   │   ├── Queries/
+│   │   │   │   ├── PlayerQuery.hs         # Đăng nhập, tạo user, update exp
+│   │   │   │   ├── TankQuery.hs           # Lấy danh sách tank, update nâng cấp
+│   │   │   │   ├── ItemQuery.hs           # Lưu/nhặt vật phẩm
+│   │   │   │   └── MatchQuery.hs          # Ghi lại lịch sử trận đấu
+│   │   │
+│   │   ├── Utils/
+│   │   │   ├── Random.hs                  # Hàm random spawn, loot
+│   │   │   ├── Math.hs                    # Vector, góc, collision
+│   │   │   ├── Timer.hs                   # Tick, cooldown
+│   │   │   └── JSON.hs                    # Encode/decode JSON config
+│   │   │
+│   │   └── Handlers/
+│   │       ├── LoginHandler.hs            # Xử lý đăng nhập qua TCP
+│   │       ├── RoomHandler.hs             # Tạo phòng, vào phòng
+│   │       ├── ShopHandler.hs             # Mua bán, nâng cấp
+│   │       ├── CombatHandler.hs           # Xử lý gói tin chiến đấu
+│   │       └── SyncHandler.hs             # Xử lý gói tin đồng bộ
+│   │
+│   ├── tests/
+│   │   ├── CombatSpec.hs
+│   │   ├── EntitySpec.hs
+│   │   ├── DungeonSpec.hs
+│   │   └── NetworkSpec.hs
+│   │
+│   ├── Dockerfile
+│   ├── config/
+│   │   ├── server.yaml
+│   │   ├── database.yaml
+│   │   └── logging.yaml
+│   │
+│   ├── migrations/
+│   │   ├── 001_init_schema.sql
+│   │   ├── 002_seed_items.sql
+│   │   ├── 003_seed_tanks.sql
+│   │   └── 004_seed_skills.sql
+│   │
+│   └── db/
+│       ├── schema.sql
+│       └── seed/
+│           ├── items.sql
+│           ├── tanks.sql
+│           ├── skills.sql
 │
-├── Client/
-│   ├── Main.hs
-│   ├── UI/
-│   │   ├── HUD.hs
-│   │   ├── SkillBar.hs
-│   │   ├── Inventory.hs
-│   │   ├── ChatBox.hs
-│   │   └── PartyFrame.hs
-│   ├── Renderer/
-│   │   ├── SpriteLoader.hs
-│   │   ├── Animation.hs
-│   │   └── MapRenderer.hs
-│   ├── Network/
-│   │   ├── ClientSocket.hs
-│   │   └── PacketSend.hs
-│   └── Input/
-│       └── InputHandler.hs
+├── client/
+│   ├── src/
+│   │   ├── Main.hs                        # Entry client
+│   │   ├── Core/Renderer.hs               # Render sprite, ánh sáng, map
+│   │   ├── Core/Input.hs                  # Xử lý input WASD, chuột
+│   │   ├── Core/Audio.hs                  # Âm thanh bắn, nổ
+│   │   ├── UI/HUD.hs                      # Thanh máu, radar, ammo
+│   │   ├── UI/Shop.hs                     # Cửa hàng nâng cấp
+│   │   ├── UI/Menu.hs                     # Menu chính, chọn chế độ
+│   │   └── Network/ClientNet.hs           # Giao tiếp TCP/UDP với server
+│   │
+│   ├── assets/
+│   │   ├── textures/
+│   │   │   ├── tanks/
+│   │   │   ├── enemies/
+│   │   │   ├── boss/
+│   │   │   └── ui/
+│   │   ├── sounds/
+│   │   ├── shaders/
+│   │   └── ui/
+│   │
+│   ├── config/
+│   │   └── client.yaml
+│   ├── Dockerfile
+│   ├── build.sh
+│   └── dist/
 │
-├── Shared/
-│   ├── Types.hs
-│   ├── Entities.hs
-│   ├── Packets.hs
-│   ├── Constants.hs
-│   └── Utils.hs
+├── shared/
+│   ├── src/
+│   │   ├── Network/
+│   │   │   ├── Packet.hs
+│   │   │   ├── Protocol.hs
+│   │   │   ├── TCPHandler.hs
+│   │   │   └── UDPHandler.hs
+│   │   └── Types/
+│   │       ├── Player.hs
+│   │       ├── Tank.hs
+│   │       ├── Enemy.hs
+│   │       └── Item.hs
 │
-├── Assets/
-│   ├── Sprites/
-│   ├── Sounds/
-│   └── Maps/
+├── database/
+│   ├── Dockerfile
+│   ├── init.sql
+│   ├── data/
+│   └── backup/
 │
-├── Database/
-│   ├── schema.sql
-│   ├── seed.sql
-│   └── migrate.sh
+├── docker-compose.yaml
 │
-└── docker-compose.yml
+└── scripts/
+    ├── run-dev.sh
+    ├── build-all.sh
+    └── migrate.sh
 ```
 
 ---
 
-# 4. Phân tích Chi Tiết Từng Thành Phần
+## 6. Dòng Dữ Liệu
 
-## **Server**
+### Client → Server
 
-### Nhiệm vụ
+| Gói                 | Dạng | Mô tả                         |
+| ------------------- | ---- | ----------------------------- |
+| `PlayerCommand`     | UDP  | Di chuyển, hướng, bắn, reload |
+| `JoinRoom {roomId}` | TCP  | Tham gia phòng PvP/Co-op      |
+| `ChatMessage`       | TCP  | Gửi tin nhắn                  |
+| `UpgradeRequest`    | TCP  | Mua nâng cấp hoặc skin        |
+| `Disconnect`        | TCP  | Rời trận                      |
 
-* Giữ **trạng thái toàn cục** (entity, dungeon, player).
-* Xử lý **logic gameplay** và đồng bộ client.
-* Giao tiếp với DB và cache.
+### Server → Client
 
-### Module & Hàm chính
-
-#### `Network/Connection.hs`
-
-* `acceptClients :: IO ()` — chấp nhận client mới.
-* `recvPacket :: Socket -> IO Packet` — nhận gói tin JSON.
-* `sendPacket :: Socket -> Packet -> IO ()` — gửi dữ liệu về client.
-
-#### `Systems/ItemSystem.hs`
-
-* `useItem :: Player -> ItemId -> GameState -> GameState`
-* `checkCooldown :: Player -> ItemId -> Bool`
-* `syncInventory :: Player -> IO ()`
-
-#### `Systems/SkillSystem.hs`
-
-* `castSkill :: Player -> SkillId -> Target -> GameState -> GameState`
-* `calcDamage :: Skill -> Player -> Target -> Int`
-* `applyBuff :: Skill -> Player -> GameState -> GameState`
-
-#### `Systems/CombatSystem.hs`
-
-* `processAttack :: Player -> Monster -> IO ()`
-* `checkDeath :: Entity -> IO ()`
-* `distributeExp :: Party -> Monster -> IO ()`
-
-#### `Systems/DungeonSystem.hs`
-
-* `loadDungeon :: DungeonId -> IO DungeonMap`
-* `spawnMonsters :: Dungeon -> IO [Monster]`
-* `checkClearCondition :: Dungeon -> Bool`
-
-#### `Database/PlayerRepo.hs`
-
-* `getPlayerByAccount :: AccountId -> IO Player`
-* `savePlayerState :: Player -> IO ()`
-* `updateInventory :: PlayerId -> [Item] -> IO ()`
-
-#### `Network/SyncLoop.hs`
-
-* `syncTick :: GameState -> IO ()`
-  (20–30 tick/giây, cập nhật vị trí, HP, status cho mọi client)
+| Gói                        | Dạng | Mô tả                            |
+| -------------------------- | ---- | -------------------------------- |
+| `WorldSnapshot`            | UDP  | Toàn bộ state tick hiện tại      |
+| `CombatEvent`              | UDP  | Hiệu ứng nổ, kill, buff          |
+| `RoomUpdate`               | TCP  | Danh sách người chơi trong phòng |
+| `ChatBroadcast`            | TCP  | Tin nhắn chat                    |
+| `ShopData / UpgradeResult` | TCP  | Kết quả giao dịch                |
+| `GameOverSummary`          | TCP  | Tổng kết sau trận                |
 
 ---
 
-## **Client**
+## 7. GIAO THỨC TRUYỀN THÔNG (TCP & UDP)
 
-### Nhiệm vụ
+### **A. Nguyên tắc chọn giao thức**
 
-* Render hình ảnh, UI, animation.
-* Gửi input người chơi đến server.
-* Nhận packet và cập nhật trạng thái hiển thị.
-
-### Module & Hàm chính
-
-#### `Renderer/MapRenderer.hs`
-
-* `loadMap :: FilePath -> IO MapData`
-* `renderMap :: MapData -> Picture`
-
-#### `UI/HUD.hs`
-
-* `drawHPMPBar :: PlayerState -> Picture`
-* `drawSkillBar :: [Skill] -> Picture`
-* `drawChatBox :: [Message] -> Picture`
-
-#### `Input/InputHandler.hs`
-
-* `processInput :: Event -> ClientState -> IO ClientState`
-* `sendMove :: Direction -> IO ()`
-* `sendCastSkill :: SkillId -> TargetId -> IO ()`
-
-#### `Network/ClientSocket.hs`
-
-* `connectServer :: String -> Int -> IO Connection`
-* `listenServer :: Connection -> (Packet -> IO ()) -> IO ()`
+| Loại dữ liệu                                                     | Đặc điểm                                       | Giao thức | Lý do                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------- | --------- | ---------------------------------------------------- |
+| **Real-time Gameplay (vị trí, bắn, combat, snapshot)**           | Cập nhật liên tục, mất gói không ảnh hưởng lớn | **UDP**   | Nhanh, không cần đảm bảo thứ tự tuyệt đối            |
+| **Chat / Room / Lobby / Mua hàng / Auth / Shop / Database Sync** | Cần đảm bảo chính xác, không mất gói           | **TCP**   | Đảm bảo thứ tự, có retry, phù hợp dữ liệu quan trọng |
+| **Ping / Heartbeat**                                             | Gói nhỏ, định kỳ                               | **UDP**   | Kiểm tra độ trễ mà không cần ACK                     |
 
 ---
 
-## **Database**
+### **B. Khi nào dùng TCP**
 
-### Cấu trúc cơ bản (PostgreSQL)
-
-| Bảng         | Mô tả                                           |
-| ------------ | ----------------------------------------------- |
-| `accounts`   | id, username, password_hash                     |
-| `characters` | id, account_id, name, class, level, exp, hp, mp |
-| `inventory`  | char_id, item_id, quantity                      |
-| `skills`     | char_id, skill_id, level                        |
-| `dungeons`   | id, seed, name                                  |
-| `party`      | id, leader_id                                   |
-
-### Hàm tiêu biểu (qua SQL hoặc Haskell ORM)
-
-* `insertCharacter :: Character -> IO ()`
-* `getInventory :: CharId -> IO [Item]`
-* `updateSkillLevel :: CharId -> SkillId -> Int -> IO ()`
-* `saveDungeonProgress :: Dungeon -> IO ()`
+1. **Auth & Login:**
+   Gửi thông tin đăng nhập, nhận token → cần chắc chắn.
+2. **Create Room / Join Room / Leave Room:**
+   Tạo session hoặc PvP phòng → cần đảm bảo.
+3. **Chat System:**
+   Mất tin nhắn là lỗi hiển nhiên → TCP.
+4. **Shop & Upgrade:**
+   Giao dịch tiền vàng, skin, nâng cấp tank → phải đúng 100%.
+5. **Match Result (Endgame Summary):**
+   Gửi về điểm, vàng → cần xác thực.
 
 ---
 
-# 5. Dòng Dữ Liệu (Data Flow)
+### **C. Khi nào dùng UDP**
+
+1. **PlayerCommand:**
+   Gửi hướng, tốc độ, hành động mỗi tick. Nếu mất 1 gói → tick sau vẫn cập nhật.
+2. **WorldSnapshot:**
+   Đồng bộ toàn cục từ server → client.
+   Gửi 15–30 lần/giây, không cần đảm bảo tất cả đến.
+3. **CombatEvent (Hiệu ứng):**
+   Hiển thị vụ nổ, sát thương, killfeed → chỉ cần realtime.
+4. **Heartbeat:**
+   Ping latency để điều chỉnh interpolation.
+
+---
+
+### **D. Định Dạng Gói (giả định)**
+
+**UDP Packet (binary):**
 
 ```
-Client Input → Server Network → Gameplay Logic → State Update → Sync Loop → Client Render
+Header: [tickID][entityCount]
+Body: [entityID][x][y][rot][hp] ... repeated
+CRC: [uint16 checksum]
 ```
 
-| Bước                | Dữ liệu           | Hướng           |
-| ------------------- | ----------------- | --------------- |
-| Di chuyển           | {x, y, dir}       | Client → Server |
-| Dùng skill          | {skillId, target} | Client → Server |
-| Cập nhật HP, vị trí | {hp, pos, status} | Server → Client |
-| Chat                | {msg, channel}    | 2 chiều         |
-| Item / Loot         | {itemId, action}  | 2 chiều         |
+**TCP Packet (JSON/BSON):**
+
+```json
+{
+  "type": "JoinRoom",
+  "payload": { "roomId": "ABC123" }
+}
+```
 
 ---
 
-# 6. Môi trường và Công cụ
+### **E. Hệ thống Network trong Haskell**
 
-* **Ngôn ngữ:** Haskell (Stack hoặc Cabal)
-* **Render:** Gloss hoặc SDL2
-* **Networking:** `network`, `aeson`, `websockets`
-* **Database:** PostgreSQL + Redis (optional)
-* **Build/Deploy:** Docker + docker-compose
-* **Test Multiplayer:** LAN 2 máy
+* Dùng `network` hoặc `network-simple` cho TCP/UDP.
+* Mỗi Client giữ:
+
+  ```haskell
+  data NetConn = NetConn
+    { tcpSocket :: Socket
+    , udpSocket :: Socket
+    , udpAddr   :: SockAddr
+    }
+  ```
+* Packet parser tách biệt:
+
+  ```haskell
+  data Packet
+    = PlayerCommand CommandData
+    | WorldSnapshot SnapshotData
+    | ChatMessage Text
+    | UpgradeRequest UpgradeData
+  ```
+* Mã hóa/giải mã dùng `aeson` hoặc `binary` (tùy tốc độ cần thiết).
+
+---
+
+## 8. Tóm tắt mạng Client–Server
+
+| Luồng           | Giao thức | Nội dung           | Tần suất       |
+| --------------- | --------- | ------------------ | -------------- |
+| Client → Server | UDP       | PlayerCommand      | 30–60 lần/s    |
+| Server → Client | UDP       | WorldSnapshot      | 15–30 lần/s    |
+| Client ↔ Server | TCP       | Chat / Shop / Room | Khi có sự kiện |
+| Client ↔ Server | UDP       | Ping/Pong          | 2–5 lần/s      |
+
+
