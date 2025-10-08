@@ -1,0 +1,36 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.38.2.
+--
+-- see: https://github.com/sol/hpack
+
+name:           shared
+version:        0.1.0.0
+synopsis:       Shared data types and utilities for MMO Dungeon Crawler
+description:    Please see the README on GitHub at <https://github.com/Sura3607/MMO_Dungeon_Crawler/blob/main/README.md>
+category:       Game
+homepage:       https://github.com/Sura3607/MMO_Dungeon_Crawler#readme
+bug-reports:    https://github.com/Sura3607/MMO_Dungeon_Crawler/issues
+author:         Nguyen Trong Huong, Nguyen Minh Nhut
+maintainer:     nguyentronghuong05@gmail.com, nguyenminhnhut3607@gmail.com
+copyright:      2025 NTH NMN
+license:        BSD3
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/Sura3607/MMO_Dungeon_Crawler
+
+library
+  exposed-modules:
+      Types.Player
+      Types.Tank
+      Network.Packet
+  other-modules:
+      Paths_shared
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , binary
+  default-language: Haskell2010

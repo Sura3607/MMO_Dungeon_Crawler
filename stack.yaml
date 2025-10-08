@@ -1,0 +1,15 @@
+# Chọn một bộ GHC và thư viện ổn định. LTS 22.7 sử dụng GHC 9.6.5
+resolver: lts-22.7
+
+# Chỉ định các gói con (packages) trong dự án của bạn
+# Stack sẽ tự động tìm các file .cabal hoặc package.yaml trong các thư mục này
+packages:
+  - ./server
+  - ./client
+  - ./shared
+
+# Tùy chọn bổ sung (không bắt buộc nhưng hữu ích)
+extra-deps: [] # Nơi để thêm các thư viện không có trong resolver
+
+# Cấu hình chung cho toàn bộ dự án
+allow-newer: true
