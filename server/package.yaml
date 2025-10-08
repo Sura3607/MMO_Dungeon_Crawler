@@ -1,0 +1,41 @@
+name:                server
+version:             0.1.0.0
+description:         The game server for MMO Dungeon Crawler
+homepage:            "https://github.com/Sura3607/MMO_Dungeon_Crawler#readme"
+github:              "Sura3607/MMO_Dungeon_Crawler"
+license:             BSD3
+author:              Nguyen Trong Huong, Nguyen Minh Nhut
+maintainer:          nguyentronghuong05@gmail.com, nguyenminhnhut3607@gmail.com
+copyright:           2025 NTH NMN
+category:            Game
+
+# Các thư viện chung mà cả library và executable của server đều dùng
+dependencies:
+  - base >= 4.7 && < 5
+  - bytestring # Xử lý chuỗi byte hiệu quả
+  - network    # Thư viện cho lập trình socket
+  - binary     # Để mã hóa/giải mã gói tin
+  # Đây là phần quan trọng nhất: liên kết đến gói 'shared'
+  - shared
+
+# Phần thư viện của server (chứa logic game)
+library:
+  source-dirs: src
+
+# Phần ứng dụng chạy được (entry point)
+executables:
+  # Tên của file thực thi sau khi build
+  mmo-server:
+    # Tệp chính để bắt đầu chạy chương trình
+    main:                Main.hs
+    # Thư mục chứa tệp Main.hs
+    source-dirs:         app
+    # Các tùy chọn cho trình biên dịch GHC, rất quan trọng để bật đa luồng
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    # Các thư viện mà chỉ riêng file thực thi này cần
+    dependencies:
+      # Liên kết đến phần library của chính gói 'server' này
+      - server

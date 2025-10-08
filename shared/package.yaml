@@ -1,0 +1,27 @@
+name:                shared
+version:             0.1.0.0
+synopsis:            Shared data types and utilities for MMO Dungeon Crawler
+description:         Please see the README on GitHub at <https://github.com/Sura3607/MMO_Dungeon_Crawler/blob/main/README.md>
+category:            Game
+homepage:            "https://github.com/Sura3607/MMO_Dungeon_Crawler#readme"
+github:              "Sura3607/MMO_Dungeon_Crawler"
+license:             BSD3
+author:              Nguyen Trong Huong, Nguyen Minh Nhut
+maintainer:          nguyentronghuong05@gmail.com, nguyenminhnhut3607@gmail.com
+copyright:           2025 NTH NMN
+
+# Định nghĩa gói này là một thư viện
+library:
+  # Thư mục chứa mã nguồn
+  source-dirs: src
+
+  # Các thư viện mà gói 'shared' này phụ thuộc vào
+  dependencies:
+    - base >= 4.7 && < 5
+    - binary # Thư viện để mã hóa/giải mã dữ liệu
+
+  # Các module mà gói này cung cấp cho các gói khác (server, client)
+  exposed-modules:
+    - Types.Player
+    - Types.Tank
+    - Network.Packet

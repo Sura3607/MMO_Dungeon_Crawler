@@ -1,0 +1,74 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.38.2.
+--
+-- see: https://github.com/sol/hpack
+
+name:           server
+version:        0.1.0.0
+description:    The game server for MMO Dungeon Crawler
+category:       Game
+homepage:       https://github.com/Sura3607/MMO_Dungeon_Crawler#readme
+bug-reports:    https://github.com/Sura3607/MMO_Dungeon_Crawler/issues
+author:         Nguyen Trong Huong, Nguyen Minh Nhut
+maintainer:     nguyentronghuong05@gmail.com, nguyenminhnhut3607@gmail.com
+copyright:      2025 NTH NMN
+license:        BSD3
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/Sura3607/MMO_Dungeon_Crawler
+
+library
+  exposed-modules:
+      Core.Config
+      Core.Logger
+      Core.Types
+      Data.Database
+      Data.Queries.PlayerQuery
+      Handlers.LoginHandler
+      Network.PacketParser
+      Network.Protocol
+      Network.SessionManager
+      Network.TCPServer
+      Network.UDPServer
+      Systems.AISystem
+      Systems.CombatSystem
+      Systems.DungeonSystem
+      Systems.EffectSystem
+      Systems.EntitySystem
+      Systems.ItemSystem
+      Systems.PartySystem
+      Systems.SkillSystem
+      Systems.SyncSystem
+      Utils.Random
+  other-modules:
+      Paths_server
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , binary
+    , bytestring
+    , network
+    , shared
+  default-language: Haskell2010
+
+executable mmo-server
+  main-is: Main.hs
+  other-modules:
+      CLI
+      ServerApp
+      Paths_server
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , binary
+    , bytestring
+    , network
+    , server
+    , shared
+  default-language: Haskell2010
