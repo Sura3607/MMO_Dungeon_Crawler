@@ -1,17 +1,23 @@
+-- client/src/Main.hs
 module Main where
 
 import Network.Socket
--- Import module cho chuỗi byte 'Strict' và đặt tên là BS
-import qualified Network.Socket.ByteString as BS
--- Import module cho chuỗi byte 'Lazy' và đặt tên là LBS
-import qualified Data.ByteString.Lazy as LBS
 import Data.Binary (encode)
 import Control.Concurrent (threadDelay)
+
+-- Import module cho chuỗi byte 'Lazy'
+import qualified Data.ByteString.Lazy as LBS
+-- Import module cho chuỗi byte 'Strict'
+import qualified Network.Socket.ByteString as BS
+
+-- Import các kiểu dữ liệu dùng chung
 import Types.Player (PlayerCommand(..))
+import Types.Common (Vec2(..))
 
 main :: IO ()
 main = withSocketsDo $ do
   putStrLn "Starting client..."
+  -- Tạo socket cho giao thức UDP
   sock <- socket AF_INET Datagram defaultProtocol
 
   let hints = defaultHints { addrSocketType = Datagram }
@@ -22,14 +28,17 @@ main = withSocketsDo $ do
   where
     loop :: Socket -> SockAddr -> IO ()
     loop sock serverAddr = do
-      let command = Move { velX = 10.0, velY = 5.0 }
-      -- encode tạo ra một chuỗi byte LAZY
+      -- Tạo câu lệnh di chuyển
+      let moveVector = Vec2 { vecX = 1.0, vecY = 0.5 }
+      let command = Move moveVector
+      
+      -- 1. Mã hóa câu lệnh thành một chuỗi byte LAZY
       let lazyMsg = encode command
-
-      -- Dùng BS.sendTo (từ module Strict)
-      -- và chuyển đổi chuỗi byte Lazy thành Strict bằng LBS.toStrict
+      
+      -- 2. Chuyển chuỗi LAZY thành STRICT và gửi đi bằng BS.sendTo
       _ <- BS.sendTo sock (LBS.toStrict lazyMsg) serverAddr
+      
       putStrLn $ "Sent command: " ++ show command
 
-      threadDelay (2 * 1000000)
+      threadDelay (2 * 1000000) -- Chờ 2 giây
       loop sock serverAddr
