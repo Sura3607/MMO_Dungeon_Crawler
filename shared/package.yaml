@@ -25,3 +25,4 @@ library:
     - Types.Player
     - Types.Tank
     - Network.Packet
+    - Types.Common

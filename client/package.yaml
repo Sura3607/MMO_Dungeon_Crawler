@@ -16,7 +16,6 @@ dependencies:
   - binary
   # Client cũng cần dùng các kiểu dữ liệu từ 'shared'
   - shared
-  # Thêm thư viện đồ họa ở đây, ví dụ: gloss
   - gloss
 
 # Phần thư viện của client (chứa logic hiển thị, input)
