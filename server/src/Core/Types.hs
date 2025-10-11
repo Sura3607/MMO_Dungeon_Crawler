@@ -1,23 +1,27 @@
 module Core.Types where
 
 import Network.Socket (SockAddr)
--- Import các kiểu đã được chuẩn hóa từ thư viện shared
-import Types.Common (EntityID, Vec2)
-import Types.Player (PlayerCommand)
+import Types.Player (PlayerCommand, PlayerState(..))
+import Types.Common (Vec2(..))
 
-type Tick = Int
-
--- | Trạng thái của toàn bộ game phía server.
 data GameState = GameState
-  { gsTick      :: Tick
-  , gsCommands  :: [(SockAddr, PlayerCommand)] -- Các lệnh nhận được trong tick
-  -- Sau này sẽ thêm State của người chơi, quái, v.v.
-  -- , gsPlayers :: Map EntityID PlayerState
+  { gsTick     :: Int
+  , gsCommands :: [Command]
+  , gsPlayers  :: [PlayerState] 
   }
 
--- | Hàm tạo một GameState ban đầu.
+data Command = Command SockAddr PlayerCommand
+
 initialGameState :: GameState
 initialGameState = GameState
   { gsTick = 0
   , gsCommands = []
+  , gsPlayers = [initialPlayerState] -- Khởi tạo một người chơi
+  }
+
+initialPlayerState :: PlayerState
+initialPlayerState = PlayerState
+  { psPosition = Vec2 0 0
+  , psBodyAngle = 0.0
+  , psTurretAngle = 0.0
   }

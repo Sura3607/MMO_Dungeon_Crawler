@@ -17,6 +17,8 @@ dependencies:
   # Client cũng cần dùng các kiểu dữ liệu từ 'shared'
   - shared
   - gloss
+  - gloss-juicy
+  - containers
 
 # Phần thư viện của client (chứa logic hiển thị, input)
 library:

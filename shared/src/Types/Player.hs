@@ -1,4 +1,3 @@
--- shared/src/Types/Player.hs
 {-# LANGUAGE DeriveGeneric #-}
 
 module Types.Player where
