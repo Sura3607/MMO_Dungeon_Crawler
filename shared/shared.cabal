@@ -25,8 +25,8 @@ library
   exposed-modules:
       Types.Player
       Types.Tank
-      Network.Packet
       Types.Common
+      Network.Packet
   other-modules:
       Paths_shared
   hs-source-dirs:

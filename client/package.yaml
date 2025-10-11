@@ -20,6 +20,9 @@ dependencies:
   - gloss-juicy
   - containers
 
+# Thêm dependency định nghĩa cho test suite
+  - hspec
+
 # Phần thư viện của client (chứa logic hiển thị, input)
 library:
   source-dirs: src
@@ -37,3 +40,14 @@ executables:
     dependencies:
       # Liên kết đến phần library của gói 'client'
       - client
+
+# Test suite (HSpec)
+tests:
+  client-test:
+    main:                InputSpec.hs
+    source-dirs:         test
+    ghc-options:
+      - -threaded
+    dependencies:
+      - client
+      - hspec

@@ -1,5 +1,3 @@
--- Tệp này sẽ định nghĩa gói tin quan trọng nhất: WorldSnapshot.
--- Đây là "bức ảnh" về trạng thái thế giới game mà server gửi cho client mỗi tick.
 {-# LANGUAGE DeriveGeneric #-}
 
 module Network.Packet where
