@@ -15,18 +15,18 @@ Game có ba chế độ:
 
 ## 2. Vòng lặp gameplay (Game Loop)
 
-1. **Người chơi bắt đầu tại Safe Zone** — khu vực an toàn có:
+1. **Người chơi bắt đầu tại map Safe Zone** — khu vực an toàn có:
 
-   * **Cửa hàng chính:** mua skin, đổi tank.
+   * **Cửa hàng chính:** mua items.
    * **Cổng Dungeon:** dẫn vào ngục tối.
 
 2. **Bước vào Dungeon:**
 
-   * Hệ thống sinh ra ngẫu nhiên bản đồ (map tile-based).
+   * Hệ thống sinh ra ngẫu nhiên bản đồ theo từng tầng (map tile-based).
    * Quái xuất hiện theo tầng (zone):
 
      * 1.1 → 1.2 → 1.3 → Boss 1
-     * 2.1 → 2.3 → Boss 2
+     * 2.1 → 2.2 → 2.3 → Boss 2
    * Mỗi tầng đều có tường, góc khuất, khu tối chỉ nhìn thấy bằng đèn xe.
 
 3. **Chiến đấu:**

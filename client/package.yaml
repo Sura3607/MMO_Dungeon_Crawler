@@ -1,0 +1,37 @@
+name:                client
+version:             0.1.0.0
+description:         The game client for MMO Dungeon Crawler
+homepage:            "https://github.com/Sura3607/MMO_Dungeon_Crawler#readme"
+github:              "Sura3607/MMO_Dungeon_Crawler"
+license:             BSD3
+author:              "Nguyen Trong Huong, Nguyen Minh Nhut"
+maintainer:          "nguyentronghuong05@gmail.com, nguyenminhnhut3607@gmail.com"
+copyright:           "2025 NTH NMN"
+category:            Game
+
+dependencies:
+  - base >= 4.7 && < 5
+  - bytestring
+  - network
+  - binary
+  # Client cũng cần dùng các kiểu dữ liệu từ 'shared'
+  - shared
+  - gloss
+
+# Phần thư viện của client (chứa logic hiển thị, input)
+library:
+  source-dirs: src
+
+# Phần ứng dụng chạy được
+executables:
+  mmo-client:
+    main:                Main.hs
+    # Ở client, có thể đặt Main.hs trong src cho đơn giản
+    source-dirs:         src
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      # Liên kết đến phần library của gói 'client'
+      - client
