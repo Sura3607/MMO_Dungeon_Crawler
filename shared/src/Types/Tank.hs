@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-} -- << THÊM DÒNG NÀY VÀO ĐẦU TIÊN
+{-# LANGUAGE DeriveGeneric #-}
 
 module Types.Tank where
 
