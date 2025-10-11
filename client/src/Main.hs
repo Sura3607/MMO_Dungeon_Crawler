@@ -63,7 +63,13 @@ loadResources = do
 runGame :: SockAddr -> Socket -> (Picture, Picture) -> IO ()
 runGame serverAddr sock (tankBody, tankTurret) = do
   clientStateRef <- newMVar initialClientState
+  
+  -- Gửi gói tin "hello" để server nhận biết và tạo state ban đầu
+  putStrLn "[DEBUG] Sending initial handshake packet..."
+  sendCmdToServer serverAddr sock Set.empty (0, 0)
+
   _ <- forkIO $ networkListenLoop sock clientStateRef
+  
   playIO
     (InWindow "MMO Dungeon Crawler" (800, 600) (10, 10))
     white
@@ -79,8 +85,11 @@ networkListenLoop sock stateRef = do
   (strictMsg, _) <- BS.recvFrom sock 8192
   let lazyMsg = fromStrict strictMsg
   case decodeOrFail lazyMsg of
-    Left _ -> networkListenLoop sock stateRef
+    Left (_, _, err) -> do
+      putStrLn $ "[DEBUG] Failed to decode snapshot: " ++ err
+      networkListenLoop sock stateRef
     Right (_, _, newSnapshot) -> do
+      putStrLn $ "[DEBUG] Received snapshot: " ++ show newSnapshot
       modifyMVar_ stateRef (\cs -> pure cs { csWorld = newSnapshot })
       networkListenLoop sock stateRef
 
@@ -105,6 +114,7 @@ sendCmdToServer serverAddr sock keys (mouseX, mouseY) = do
   let moveVec = calculateMoveVector keys
   let turretAngle = atan2 mouseY mouseX
   let command = MoveAndAim moveVec turretAngle
+  putStrLn $ "[DEBUG] Sending command: " ++ show command
   let lazyMsg = encode command
   let strictMsg = toStrict lazyMsg
   _ <- BS.sendTo sock strictMsg serverAddr
