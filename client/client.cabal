@@ -31,6 +31,7 @@ library
       Input
       Main
       Network.Client
+      Network.Discovery
       Renderer.Resources
       Settings
       Systems.MapLoader
@@ -54,6 +55,7 @@ library
     , gloss-juicy
     , network
     , shared
+    , split
     , yaml
   default-language: Haskell2010
 
@@ -68,6 +70,7 @@ executable mmo-client
       Game
       Input
       Network.Client
+      Network.Discovery
       Renderer.Resources
       Settings
       Systems.MapLoader
@@ -92,5 +95,6 @@ executable mmo-client
     , gloss-juicy
     , network
     , shared
+    , split
     , yaml
   default-language: Haskell2010

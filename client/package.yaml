@@ -23,6 +23,7 @@ dependencies:
   - aeson
   - filepath
   - yaml
+  - split
 
 # Phần thư viện của client (chứa logic hiển thị, input)
 library:

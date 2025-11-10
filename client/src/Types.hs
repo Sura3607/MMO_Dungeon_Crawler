@@ -10,11 +10,13 @@ module Types
   , AppState(..)
   , ClientState(..)
   , MatchState(..)
+  , RoomSelectionData(..)
+  , DiscoveredRoom(..)
   ) where
 
 import Network.Socket (Socket, SockAddr)
 import System.IO (Handle)
-import Control.Concurrent (MVar)
+import Control.Concurrent (MVar, ThreadId)
 import qualified Data.Set as Set
 import Data.Maybe (Maybe)
 
@@ -76,7 +78,7 @@ data PostGameData = PostGameData
 data AppState
   = S_Login    LoginData    -- Màn hình đăng nhập
   | S_Menu                  -- Menu chính (Nút Start)
-  | S_RoomSelection String  -- (String là RoomID đang nhập)
+  | S_RoomSelection RoomSelectionData
   | S_Lobby    LobbyData    -- Sảnh chờ (Tạo/Vào phòng)
   | S_DungeonLobby (Maybe TankType)
   | S_InGame   InGameState  -- Trạng thái game (ClientState cũ)
@@ -91,4 +93,16 @@ data ClientState = ClientState
   , csMyId       :: Int        -- ID của mình (lấy sau khi login)
   , csState      :: AppState
   , csResources  :: Resources
+  , csDiscoveryThread :: Maybe ThreadId
+  }
+
+data DiscoveredRoom = DiscoveredRoom
+  { drRoomId :: String
+  , drPlayerCount :: Int
+  } deriving (Show, Eq, Ord)
+data RoomSelectionData = RoomSelectionData 
+  { rsdRoomId :: String
+  , rsdError :: String 
+  , rsdDiscoveredRooms :: Set.Set DiscoveredRoom 
+  , rsdIsPublic :: Bool
   }

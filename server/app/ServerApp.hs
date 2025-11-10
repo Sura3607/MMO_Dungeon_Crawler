@@ -14,9 +14,11 @@ import Core.Types
 import Core.Config (AppConfig(..), loadConfig)
 import Network.UDPServer (udpListenLoop)
 import Network.TCPServer (startTcpServer) 
+import Network.Discovery (startDiscoveryService)
 import Systems.MapLoader (loadMapFromFile) 
 import Types.Common (Vec2(..))
 import Data.Database (connectDb)
+
 
 runServer :: IO ()
 runServer = withSocketsDo $ do
@@ -58,6 +60,9 @@ runServer = withSocketsDo $ do
       
       -- Khởi động UDP Listener
       _ <- forkIO $ udpListenLoop sockUDP serverStateRef
+
+      -- Khởi động Discovery Service
+      _ <- forkIO $ startDiscoveryService serverStateRef
       
       putStrLn "Server is running. Main thread is sleeping."
       forever $ threadDelay 1000000

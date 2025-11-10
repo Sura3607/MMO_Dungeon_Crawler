@@ -11,8 +11,10 @@ import Types
 import Network.Client (sendTcpPacket)
 import Types.Tank (TankType(..))
 import Network.Packet (ClientTcpPacket(..))
+import Network.Discovery (startDiscoveryLoop, stopDiscoveryLoop)
 import Core.Animation (startAnimation)
 import Types.GameMode (GameMode(..))
+
 
 -- INPUT CHÍNH (Router)
 handleInputIO :: Event -> MVar ClientState -> IO (MVar ClientState)
@@ -21,7 +23,7 @@ handleInputIO event mvar = do
     case (csState cState) of
       S_Login data_ -> handleInputLogin event cState
       S_Menu        -> handleInputMenu event cState
-      S_RoomSelection data_ -> handleInputRoomSelection event cState
+      S_RoomSelection data_ -> handleInputRoomSelection event mvar cState
       S_Lobby data_   -> handleInputLobby event cState
       S_DungeonLobby _ -> handleInputDungeonLobby event cState
       S_InGame gdata  -> 
@@ -104,7 +106,7 @@ handleInputMenu event cState@(ClientState { csTcpHandle = h }) =
     EventKey (MouseButton LeftButton) Down _ (x, y)
       | x > -100 && x < 100 && y > -25 && y < 25 -> do
           putStrLn "[Input] Clicked Start PvP"
-          pure cState { csState = S_RoomSelection "" }
+          pure cState { csState = S_RoomSelection (RoomSelectionData "" "" Set.empty False) }        
       | x > -100 && x < 100 && y > -85 && y < -35 -> do
           putStrLn "[Input] Clicked Start PvE (Disabled)"
           pure cState
@@ -132,8 +134,8 @@ handleInputDungeonLobby event cState@(ClientState { csTcpHandle = h, csState = (
     _ -> pure cState
 handleInputDungeonLobby _ cState = pure cState
 
--- === ROOM SELECTION ===
 handleInputRoomSelection :: Event -> ClientState -> IO ClientState
+<<<<<<< HEAD
 handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = (S_RoomSelection roomId) }) =
   case event of
     (EventKey (SpecialKey KeyBackspace) Down _ _) -> 
@@ -148,14 +150,62 @@ handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = 
       | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
           sendTcpPacket h CTP_CreateRoom
           pure cState
+=======
+handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = (S_RoomSelection rsd) }) =
+  let roomId = rsdRoomId rsd -- Lấy room ID cũ
+  in case event of
+    (EventKey (Char c) Down _ _) -> 
+      pure cState { csState = S_RoomSelection (rsd { rsdRoomId = roomId ++ [c] }) }
+
+    (EventKey (SpecialKey KeyBackspace) Down _ _) -> 
+      pure cState { csState = S_RoomSelection (rsd { rsdRoomId = if null roomId then "" else init roomId }) }
+
+    (EventKey (MouseButton LeftButton) Down _ (x, y))
+      
+      -- Nút Create Room (phiên bản 'dev' đã thắng)
+      | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
+          stopDiscoveryLoop mvar -- Dừng scan
+          sendTcpPacket h (CTP_CreateRoom (rsdIsPublic rsd))
+          pure cState { csState = S_RoomSelection (rsd { rsdError = "" }) }
+      
+      -- Nút Join Room
+>>>>>>> db97c3604c1ae8d1dbede4e174d3e792317096bc
       | (x > -100 && x < 100 && y > -85 && y < -35) -> do 
+          stopDiscoveryLoop mvar -- Dừng scan
           sendTcpPacket h (CTP_JoinRoom roomId)
+<<<<<<< HEAD
           pure cState
+=======
+          pure cState { csState = S_RoomSelection (rsd { rsdError = "" }) }
+
+      -- Nút Back
+>>>>>>> db97c3604c1ae8d1dbede4e174d3e792317096bc
       | (x > -100 && x < 100 && y > -235 && y < -185) -> do
+          stopDiscoveryLoop mvar -- Dừng scan
           putStrLn "[Input] Back to Menu"
           pure cState { csState = S_Menu }
+          
+      -- NÚT GẠT PUBLIC (x=50, y=-20)
+      | (x > 175 && x < 225 && y > -162.5 && y < -137.5) -> do -- (Tọa độ (200, -150), size (40, 25))
+          pure cState { csState = S_RoomSelection (rsd { rsdIsPublic = not (rsdIsPublic rsd) }) }
+      
+      -- CLICK VÀO DANH SÁCH PHÒNG
+      | (x > -340 && x < 0 && y < -310 && y > -450) -> do
+          let yBase = -310
+          let yClick = y
+          let idx = floor ((yBase - yClick) / 25)
+          let discoveredRooms = Set.toList (rsdDiscoveredRooms rsd)
+          
+          if idx >= 0 && idx < length discoveredRooms
+            then 
+              let clickedRoom = discoveredRooms !! idx
+              in pure cState { csState = S_RoomSelection (rsd { rsdRoomId = drRoomId clickedRoom }) }
+            else 
+              pure cState
+              
+      | otherwise -> pure cState
     _ -> pure cState
-handleInputRoomSelection _ cState = pure cState
+handleInputRoomSelection _ cState = pure cState -- Fallback
 
 -- === LOBBY ===
 handleInputLobby :: Event -> ClientState -> IO ClientState

@@ -239,12 +239,12 @@ processPacket dbConn mPid h pkt sState serverStateRef =
 
     -- ================================================================
     -- TRẠNG THÁI: ĐÃ ĐĂNG NHẬP (mPid is Just pid)
-    -- ================================================================
+    -- ==================================================================
 
-    (CTP_CreateRoom, Just pid) -> do
+    (CTP_CreateRoom isPublic, Just pid) -> do
       newRoomId <- generateRoomId
       let client = ssClients sState Map.! pid
-      let newRoom = Room newRoomId (Map.singleton pid client) Nothing Set.empty
+      let newRoom = Room newRoomId (Map.singleton pid client) Nothing Set.empty isPublic
       let newRooms = Map.insert newRoomId newRoom (ssRooms sState)
       let action = sendTcpPacket h (STP_RoomUpdate newRoomId [pcInfo client])
       pure (sState { ssRooms = newRooms }, (Just pid, [action]))
