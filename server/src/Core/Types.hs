@@ -79,6 +79,7 @@ data Room = Room
   , roomPlayers :: Map.Map Int PlayerClient 
   , roomGame    :: Maybe (MVar RoomGameState)
   , roomRematchRequests :: Set.Set Int
+  , roomIsPublic :: Bool
   }
 
 data ServerState = ServerState

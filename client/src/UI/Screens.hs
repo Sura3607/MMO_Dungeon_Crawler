@@ -14,9 +14,9 @@ import Graphics.Gloss
 import Network.Packet (PlayerInfo(..))
 import Types.Tank (TankType(..))
 import Data.Maybe (isJust, fromJust)
-import Data.List (find)
 import qualified Data.Set as Set
-import Types (PostGameData(..), LoginData(..), ActiveField(..), RoomSelectionData(..))
+import Data.List (find)
+import Types (PostGameData(..), LoginData(..), ActiveField(..), RoomSelectionData(..), DiscoveredRoom(..))
 
 -- === HÀM TIỆN ÍCH VẼ ===
 
@@ -75,13 +75,51 @@ renderRoomSelection :: RoomSelectionData -> Picture
 renderRoomSelection rsd = Pictures
   [ Color black $ rectangleSolid 800 600
   , drawText (-150, 100) 0.3 "PVP LOBBY"
+
+  -- Hàng nút 1
   , drawButton (0, 0) "Create Room"
   , drawButton (0, -60) "Join Room"
-  , drawText (-150, -120) 0.2 "Room ID:"
-  , drawButton (0, -150) (rsdRoomId rsd) 
+
+  -- Hàng nút 2: Room ID và Nút gạt Public
+  , drawText (-250, -150) 0.2 "Room ID:"
+  , drawButton (0, -150) (rsdRoomId rsd)
+
+  , drawText (170, -140) 0.15 "Public:"
+  , let (c, t) = if rsdIsPublic rsd
+                 then (green, "ON")
+                 else (greyN 0.5, "OFF")
+    in Pictures
+      [ Translate 200 (-150) $ Color c $ rectangleSolid 40 25
+      , Translate 200 (-150) $ Color white $ rectangleWire 40 25
+      , drawText (188, -155) 0.12 t
+      ]
+
+  -- Nút Back
   , drawButton (0, -210) "Back"
+
+  -- Hiển thị lỗi
   , Translate (-200) (-250) $ Scale 0.15 0.15 $ Color red $ Text (rsdError rsd)
+
+  -- KHU VỰC QUÉT LAN (y = -280)
+  , drawText (-350, -280) 0.2 "Scanning LAN..."
+  , Translate 0 (-380) $ Color (greyN 0.1) $ rectangleSolid 700 180
+  , Translate 0 (-380) $ Color white $ rectangleWire 700 180
+  , drawDiscoveredRooms (Set.toList $ rsdDiscoveredRooms rsd)
   ]
+
+drawDiscoveredRooms :: [DiscoveredRoom] -> Picture
+drawDiscoveredRooms rooms = 
+  let
+    drawRoom :: (Int, DiscoveredRoom) -> Picture
+    drawRoom (idx, room) =
+      let y = -310 - (fromIntegral idx * 25)
+          roomText = "ID: " ++ drRoomId room ++ " (" ++ show (drPlayerCount room) ++ "/2)"
+      in 
+        -- Vẽ text, vùng click được xử lý trong Events.hs
+        Translate (-340) y $ Scale 0.15 0.15 $ Color white $ Text roomText
+  in
+    -- Giới hạn 6 phòng
+    Pictures (map drawRoom (zip [0..] (take 6 rooms)))
 
 renderLobby :: String -> [PlayerInfo] -> Int -> Maybe TankType -> Bool -> Picture
 renderLobby roomId players myId myTank myReady = Pictures
