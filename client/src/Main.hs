@@ -61,6 +61,7 @@ main = withSocketsDo $ do
                 , csMyId = 0 
                 , csState = S_Login (LoginData "" "" "Please login" UserField)
                 , csResources = assets
+                , csDiscoveryThread = Nothing
                 }
           
           clientStateRef <- newMVar initialState

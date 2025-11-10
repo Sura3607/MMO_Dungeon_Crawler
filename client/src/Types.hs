@@ -11,11 +11,12 @@ module Types
   , ClientState(..)
   , MatchState(..)
   , RoomSelectionData(..)
+  , DiscoveredRoom(..)
   ) where
 
 import Network.Socket (Socket, SockAddr)
 import System.IO (Handle)
-import Control.Concurrent (MVar)
+import Control.Concurrent (MVar, ThreadId)
 import qualified Data.Set as Set
 import Data.Maybe (Maybe)
 
@@ -92,9 +93,16 @@ data ClientState = ClientState
   , csMyId       :: Int        -- ID của mình (lấy sau khi login)
   , csState      :: AppState
   , csResources  :: Resources
+  , csDiscoveryThread :: Maybe ThreadId
   }
 
+data DiscoveredRoom = DiscoveredRoom
+  { drRoomId :: String
+  , drPlayerCount :: Int
+  } deriving (Show, Eq, Ord)
 data RoomSelectionData = RoomSelectionData 
   { rsdRoomId :: String
   , rsdError :: String 
+  , rsdDiscoveredRooms :: Set.Set DiscoveredRoom 
+  , rsdIsPublic :: Bool
   }
