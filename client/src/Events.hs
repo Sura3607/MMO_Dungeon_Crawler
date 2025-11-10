@@ -26,17 +26,15 @@ handleInputIO event mvar = do
       S_DungeonLobby _ -> handleInputDungeonLobby event cState
       S_InGame gdata  -> 
         case event of
-          -- <--- LOGIC BẮT PHÍM ESC Ở ĐÂY
           (EventKey (SpecialKey KeyEsc) Down _ _) ->
-            if (igsMode gdata == PvE) -- Chỉ cho phép pause PvE
+            if (igsMode gdata == PvE)
             then do
               putStrLn "[Input] Pausing PvE game"
               sendTcpPacket (csTcpHandle cState) (CTP_PauseGame True)
-              pure cState { csState = S_Paused gdata False } -- Chuyển sang state Paused
+              pure cState { csState = S_Paused gdata False }
             else 
-              pure cState -- Không làm gì ở PvP
+              pure cState
           
-          -- Xử lý input game bình thường
           _ -> if (igsMatchState gdata == InProgress)
                  then pure $ cState { csState = S_InGame (handleInputGame event gdata) }
                  else case (igsMatchState gdata) of
@@ -51,51 +49,52 @@ handleInputIO event mvar = do
 handleInputLogin :: Event -> ClientState -> IO ClientState
 handleInputLogin event cState@(ClientState { csTcpHandle = h, csState = (S_Login ld) }) =
   case event of
-    -- Xử lý gõ phím ký tự
-    (EventKey (Char c) Down _ _) | isPrint c -> 
-      pure $ cState { csState = S_Login updateField }
-      where 
-        updateField = case ldActiveField ld of
-                        UserField -> ld { ldUsername = ldUsername ld ++ [c] }
-                        PassField -> ld { ldPassword = ldPassword ld ++ [c] }
-
-    -- Xử lý Backspace
+    -- 1. Bắt phím Backspace (Special Key)
     (EventKey (SpecialKey KeyBackspace) Down _ _) ->
-      pure $ cState { csState = S_Login (updateField) }
-      where 
-        updateField = case ldActiveField ld of
-          UserField -> ld { ldUsername = if null (ldUsername ld) then "" else init (ldUsername ld) }
-          PassField -> ld { ldPassword = if null (ldPassword ld) then "" else init (ldPassword ld) }
+      pure $ cState { csState = S_Login (doBackspace) }
 
+    -- 2. Bắt ký tự Backspace (Char '\b')
+    (EventKey (Char '\b') Down _ _) ->
+      pure $ cState { csState = S_Login (doBackspace) }
+
+    -- Bắt các ký tự in được (a, b, c, 1, 2, 3, etc.)
+    (EventKey (Char c) Down _ _) | isPrint c ->
+      pure $ cState { csState = S_Login (addChar c) }
+    
     -- Xử lý phím Tab
     (EventKey (SpecialKey KeyTab) Down _ _) ->
       pure $ cState { csState = S_Login (toggleField) }
-      where
-        toggleField = case ldActiveField ld of
-                        UserField -> ld { ldActiveField = PassField }
-                        PassField -> ld { ldActiveField = UserField }
 
     -- Xử lý Click chuột
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- Click vào ô Username
       | (x > -20 && x < 180 && y > 25 && y < 75) ->
           pure cState { csState = S_Login (ld { ldActiveField = UserField }) }
-      -- Click vào ô Password
       | (x > -20 && x < 180 && y > -55 && y < -5) ->
           pure cState { csState = S_Login (ld { ldActiveField = PassField }) }
-
-      -- Click nút Login (x = -100)
       | (x > -200 && x < 0 && y > -175 && y < -125) -> do
           sendTcpPacket h (CTP_Login (ldUsername ld) (ldPassword ld))
           pure cState { csState = S_Login ld { ldStatus = "Logging in..." } }
-
-      -- Click nút Register (x = 100)
       | (x > 0 && x < 200 && y > -175 && y < -125) -> do
           sendTcpPacket h (CTP_Register (ldUsername ld) (ldPassword ld))
           pure cState { csState = S_Login ld { ldStatus = "Registering..." } }
-
       | otherwise -> pure cState
-    _ -> pure cState
+      
+    _ -> pure cState -- Bỏ qua các phím khác (như Shift, Ctrl, ...)
+  
+  where
+    -- Hàm helper để tránh lặp code
+    doBackspace = case ldActiveField ld of
+      UserField -> ld { ldUsername = if null (ldUsername ld) then "" else init (ldUsername ld) }
+      PassField -> ld { ldPassword = if null (ldPassword ld) then "" else init (ldPassword ld) }
+      
+    addChar c = case ldActiveField ld of
+      UserField -> ld { ldUsername = ldUsername ld ++ [c] }
+      PassField -> ld { ldPassword = ldPassword ld ++ [c] }
+      
+    toggleField = case ldActiveField ld of
+      UserField -> ld { ldActiveField = PassField }
+      PassField -> ld { ldActiveField = UserField }
+
 handleInputLogin _ cState = pure cState
 
 -- === MAIN MENU ===
@@ -108,7 +107,6 @@ handleInputMenu event cState@(ClientState { csTcpHandle = h }) =
           pure cState { csState = S_RoomSelection "" }
       | x > -100 && x < 100 && y > -85 && y < -35 -> do
           putStrLn "[Input] Clicked Start PvE (Disabled)"
-          -- PvE feature is disabled client-side; do not enter dungeon lobby
           pure cState
       | x > -100 && x < 100 && y > -145 && y < -95 -> do
           putStrLn "[Input] Clicked Start 2PvE (Disabled)"
@@ -120,18 +118,13 @@ handleInputDungeonLobby :: Event -> ClientState -> IO ClientState
 handleInputDungeonLobby event cState@(ClientState { csTcpHandle = h, csState = (S_DungeonLobby mTank) }) =
   case event of
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- "Select Rapid"
       | (x > -200 && x < 0 && y > -25 && y < 25) -> 
           pure cState { csState = S_DungeonLobby (Just Rapid) }
-      -- "Select Blast"
       | (x > 0 && x < 200 && y > -25 && y < 25) -> 
           pure cState { csState = S_DungeonLobby (Just Blast) }
-      -- "Start Dungeon"
       | (x > -100 && x < 100 && y > -225 && y < -175) -> do 
-          -- PvE is disabled: do not send start request
           putStrLn "[Input] Start Dungeon pressed, but PvE is disabled."
           pure cState
-      -- VÙNG CLICK NÚT "BACK" (cho y = -260)
       | (x > -100 && x < 100 && y > -285 && y < -235) -> do
           putStrLn "[Input] Back to Menu"
           pure cState { csState = S_Menu }
@@ -143,23 +136,21 @@ handleInputDungeonLobby _ cState = pure cState
 handleInputRoomSelection :: Event -> ClientState -> IO ClientState
 handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = (S_RoomSelection roomId) }) =
   case event of
-    -- Nhập ký tự cho Room ID
-    (EventKey (Char c) Down _ _) | isPrint c ->
-      pure cState { csState = S_RoomSelection (roomId ++ [c]) }
-    -- Xử lý Backspace
     (EventKey (SpecialKey KeyBackspace) Down _ _) -> 
       pure cState { csState = S_RoomSelection (if null roomId then "" else init roomId) }
-    -- Xử lý Click chuột
+    (EventKey (Char '\b') Down _ _) ->
+      pure cState { csState = S_RoomSelection (if null roomId then "" else init roomId) }
+
+    (EventKey (Char c) Down _ _) | isPrint c -> 
+      pure cState { csState = S_RoomSelection (roomId ++ [c]) }
+      
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- VÙNG CLICK NÚT "CREATE ROOM" (cho y = 0)
       | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
           sendTcpPacket h CTP_CreateRoom
           pure cState
-      -- VÙNG CLICK NÚT "JOIN ROOM" (cho y = -50)
       | (x > -100 && x < 100 && y > -85 && y < -35) -> do 
           sendTcpPacket h (CTP_JoinRoom roomId)
           pure cState
-      -- VÙNG CLICK NÚT "BACK" (cho y = -210)
       | (x > -100 && x < 100 && y > -235 && y < -185) -> do
           putStrLn "[Input] Back to Menu"
           pure cState { csState = S_Menu }
@@ -170,29 +161,22 @@ handleInputRoomSelection _ cState = pure cState
 handleInputLobby :: Event -> ClientState -> IO ClientState
 handleInputLobby event cState@(ClientState { csTcpHandle = h, csState = (S_Lobby ld) }) =
   case event of
-    -- Xử lý Click chuột
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- VÙNG CLICK NÚT "SELECT RAPID"
-      | (x > -200 && x < 0 && y > -75 && y < -25) -> do
+      | (x > -200 && x < 0 && y > -75 && y < -25) -> do -- "Select Rapid"
           let newTank = Just Rapid
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
-      -- VÙNG CLICK NÚT "SELECT BLAST"
-      | (x > 0 && x < 200 && y > -75 && y < -25) -> do
+      | (x > 0 && x < 200 && y > -75 && y < -25) -> do -- "Select Blast"
           let newTank = Just Blast
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
-      -- VÙNG CLICK NÚT "READY"
-      | (x > -100 && x < 100 && y > -225 && y < -175) -> do
+      | (x > -100 && x < 100 && y > -225 && y < -175) -> do -- "Ready"
           let newReady = not (ldMyReady ld)
           sendTcpPacket h (CTP_UpdateLobbyState (ldMyTank ld) newReady)
           pure cState { csState = S_Lobby ld { ldMyReady = newReady } }
-      -- XỬ LÝ NÚT BACK (tọa độ y = -260)
       | (x > -100 && x < 100 && y > -285 && y < -235) -> do
           putStrLn "[Input] Back (Leaving Room)..."
-          -- Gửi yêu cầu rời phòng. Server sẽ phản hồi bằng STP_ShowMenu
           sendTcpPacket h CTP_LeaveRoom
-          -- Client không tự ý đổi state, mà chờ phản hồi từ server
           pure cState
     _ -> pure cState
 handleInputLobby _ cState = pure cState
@@ -202,26 +186,21 @@ handleInputPostGame :: Event -> ClientState -> IO ClientState
 handleInputPostGame event cState@(ClientState { csTcpHandle = h, csState = (S_PostGame pgData) }) =
   case event of
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- Nút "Rematch" (y = 0)
       | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
-          -- Chỉ gửi nếu chúng ta chưa yêu cầu
           if Set.notMember (csMyId cState) (pgRematchRequesters pgData)
             then do
               putStrLn "[Input] Requesting Rematch..."
               sendTcpPacket h CTP_RequestRematch
-              -- Cập nhật UI ngay lập tức (tạm thời)
               let newSet = Set.insert (csMyId cState) (pgRematchRequesters pgData)
               pure cState { csState = S_PostGame (pgData { pgRematchRequesters = newSet }) }
             else 
-              pure cState -- Không làm gì nếu đã click
-              
-      -- Nút "Exit to Menu" (y = -60)
+              pure cState
       | (x > -100 && x < 100 && y > -85 && y < -35) -> do -- "Exit to Menu"
           putStrLn "[Input] Exiting to Menu."
           sendTcpPacket h CTP_LeaveRoom
           pure cState { csState = S_Menu } 
     _ -> pure cState
-handleInputPostGame _ cState = pure cState -- Fallback
+handleInputPostGame _ cState = pure cState
 
 -- === IN GAME ===
 handleInputGame :: Event -> InGameState -> InGameState
@@ -247,42 +226,33 @@ handleInputPaused :: Event -> ClientState -> IO ClientState
 handleInputPaused event cState@(ClientState { csTcpHandle = h, csState = (S_Paused gdata isConfirming) }) =
   case (isConfirming, event) of
     
-    -- --- Đang ở màn hình xác nhận ---
     (True, EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- Nút "Yes, Exit" (x = -100)
       | (x > -200 && x < 0 && y > -125 && y < -75) -> do
           putStrLn "[Input] Confirmed Exit to Menu."
-          sendTcpPacket h (CTP_PauseGame False) -- Gửi unpause (dù server sẽ tự xử lý khi LeaveRoom)
+          sendTcpPacket h (CTP_PauseGame False)
           sendTcpPacket h CTP_LeaveRoom
           pure cState { csState = S_Menu }
-      -- Nút "No, Cancel" (x = 100)
       | (x > 0 && x < 200 && y > -125 && y < -75) -> do
           putStrLn "[Input] Cancelled Exit."
-          pure cState { csState = S_Paused gdata False } -- Quay lại menu pause
+          pure cState { csState = S_Paused gdata False }
       | otherwise -> pure cState
 
-    -- --- Đang ở menu pause chính ---
-    (False, EventKey (SpecialKey KeyEsc) Down _ _) -> do -- Nhấn Esc để Continue
+    (False, EventKey (SpecialKey KeyEsc) Down _ _) -> do
       putStrLn "[Input] Resuming game (Esc)"
       sendTcpPacket h (CTP_PauseGame False)
       pure cState { csState = S_InGame gdata }
 
     (False, EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- Nút "Continue" (y = 100)
       | (x > -100 && x < 100 && y > 75 && y < 125) -> do
           putStrLn "[Input] Resuming game (Button)"
           sendTcpPacket h (CTP_PauseGame False)
           pure cState { csState = S_InGame gdata }
-      -- Nút "Settings" (y = 40)
       | (x > -100 && x < 100 && y > 15 && y < 65) -> do
           putStrLn "[Input] Settings (Disabled)"
           pure cState
-      -- Nút "Exit to Menu" (y = -20)
       | (x > -100 && x < 100 && y > -45 && y < 5) -> do
           putStrLn "[Input] Requesting Exit to Menu..."
-          pure cState { csState = S_Paused gdata True } -- Chuyển sang màn hình xác nhận
+          pure cState { csState = S_Paused gdata True }
       | otherwise -> pure cState
-
-    -- Bất kỳ input nào khác thì bỏ qua
     _ -> pure cState
-handleInputPaused _ cState = pure cState -- Fallback
+handleInputPaused _ cState = pure cState
