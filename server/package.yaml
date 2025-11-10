@@ -37,6 +37,7 @@ library:
     - Core.Types
     - Network.TCPServer
     - Network.UDPServer
+    - Network.Discovery
     - Systems.MapLoader
     - Systems.AISystem
     - Systems.CombatSystem

@@ -10,8 +10,10 @@ import Types
 import Network.Client (sendTcpPacket)
 import Types.Tank (TankType(..))
 import Network.Packet (ClientTcpPacket(..))
+import Network.Discovery (startDiscoveryLoop, stopDiscoveryLoop)
 import Core.Animation (startAnimation)
 import Types.GameMode (GameMode(..))
+
 
 -- INPUT CHÍNH (Router)
 handleInputIO :: Event -> MVar ClientState -> IO (MVar ClientState)
@@ -20,7 +22,7 @@ handleInputIO event mvar = do
     case (csState cState) of
       S_Login data_ -> handleInputLogin event cState
       S_Menu        -> handleInputMenu event cState
-      S_RoomSelection data_ -> handleInputRoomSelection event cState
+      S_RoomSelection data_ -> handleInputRoomSelection event mvar cState
       S_Lobby data_   -> handleInputLobby event cState
       S_DungeonLobby _ -> handleInputDungeonLobby event cState
       S_InGame gdata  -> 
@@ -104,7 +106,7 @@ handleInputMenu event cState@(ClientState { csTcpHandle = h }) =
     EventKey (MouseButton LeftButton) Down _ (x, y)
       | x > -100 && x < 100 && y > -25 && y < 25 -> do
           putStrLn "[Input] Clicked Start PvP"
-          pure cState { csState = S_RoomSelection (RoomSelectionData "" "") }
+          pure cState { csState = S_RoomSelection (RoomSelectionData "" "" Set.empty False) }        
       | x > -100 && x < 100 && y > -85 && y < -35 -> do
           putStrLn "[Input] Clicked Start PvE (disabled)"
           -- PvE feature is disabled client-side; do not enter dungeon lobby
@@ -138,7 +140,6 @@ handleInputDungeonLobby event cState@(ClientState { csTcpHandle = h, csState = (
     _ -> pure cState
 handleInputDungeonLobby _ cState = pure cState
 
--- === ROOM SELECTION ===
 handleInputRoomSelection :: Event -> ClientState -> IO ClientState
 handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = (S_RoomSelection rsd) }) =
   let roomId = rsdRoomId rsd -- Lấy room ID cũ

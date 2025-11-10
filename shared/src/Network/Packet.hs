@@ -33,7 +33,7 @@ import Types.GameMode (GameMode)
 data ClientTcpPacket
   = CTP_Login String String -- (username, password)
   | CTP_Register String String -- (username, password)
-  | CTP_CreateRoom
+  | CTP_CreateRoom Bool
   | CTP_JoinRoom String     -- (roomId)
   | CTP_UpdateLobbyState (Maybe TankType) Bool -- (Maybe TankType, IsReady)
   | CTP_LeaveRoom
