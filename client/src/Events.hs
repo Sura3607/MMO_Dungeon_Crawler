@@ -5,6 +5,7 @@ module Events (handleInputIO) where
 import Graphics.Gloss.Interface.IO.Game
 import Control.Concurrent (MVar, modifyMVar_)
 import qualified Data.Set as Set
+import Data.Char (isPrint)
 
 import Types
 import Network.Client (sendTcpPacket)
@@ -50,8 +51,8 @@ handleInputIO event mvar = do
 handleInputLogin :: Event -> ClientState -> IO ClientState
 handleInputLogin event cState@(ClientState { csTcpHandle = h, csState = (S_Login ld) }) =
   case event of
-    -- Xử lý gõ phím
-    (EventKey (Char c) Down _ _) -> 
+    -- Xử lý gõ phím ký tự
+    (EventKey (Char c) Down _ _) | isPrint c -> 
       pure $ cState { csState = S_Login updateField }
       where 
         updateField = case ldActiveField ld of
@@ -106,7 +107,7 @@ handleInputMenu event cState@(ClientState { csTcpHandle = h }) =
           putStrLn "[Input] Clicked Start PvP"
           pure cState { csState = S_RoomSelection "" }
       | x > -100 && x < 100 && y > -85 && y < -35 -> do
-          putStrLn "[Input] Clicked Start PvE (disabled)"
+          putStrLn "[Input] Clicked Start PvE (Disabled)"
           -- PvE feature is disabled client-side; do not enter dungeon lobby
           pure cState
       | x > -100 && x < 100 && y > -145 && y < -95 -> do
@@ -142,17 +143,19 @@ handleInputDungeonLobby _ cState = pure cState
 handleInputRoomSelection :: Event -> ClientState -> IO ClientState
 handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = (S_RoomSelection roomId) }) =
   case event of
-    (EventKey (Char c) Down _ _) -> 
+    -- Nhập ký tự cho Room ID
+    (EventKey (Char c) Down _ _) | isPrint c ->
       pure cState { csState = S_RoomSelection (roomId ++ [c]) }
+    -- Xử lý Backspace
     (EventKey (SpecialKey KeyBackspace) Down _ _) -> 
       pure cState { csState = S_RoomSelection (if null roomId then "" else init roomId) }
+    -- Xử lý Click chuột
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- VÙNG CLICK NÚT "Create Room" (cho y = 0)
+      -- VÙNG CLICK NÚT "CREATE ROOM" (cho y = 0)
       | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
           sendTcpPacket h CTP_CreateRoom
           pure cState
-      
-      -- VÙNG CLICK NÚT "Join Room" (cho y = -60)
+      -- VÙNG CLICK NÚT "JOIN ROOM" (cho y = -50)
       | (x > -100 && x < 100 && y > -85 && y < -35) -> do 
           sendTcpPacket h (CTP_JoinRoom roomId)
           pure cState
@@ -167,26 +170,24 @@ handleInputRoomSelection _ cState = pure cState
 handleInputLobby :: Event -> ClientState -> IO ClientState
 handleInputLobby event cState@(ClientState { csTcpHandle = h, csState = (S_Lobby ld) }) =
   case event of
+    -- Xử lý Click chuột
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- VÙNG CLICK NÚT "Select Rapid" (cho y = -50)
-      | (x > -200 && x < 0 && y > -75 && y < -25) -> do -- "Select Rapid"
+      -- VÙNG CLICK NÚT "SELECT RAPID"
+      | (x > -200 && x < 0 && y > -75 && y < -25) -> do
           let newTank = Just Rapid
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
-      
-      --- VÙNG CLICK NÚT "Select Blast" (cho y = -50)
-      | (x > 0 && x < 200 && y > -75 && y < -25) -> do -- "Select Blast"
+      -- VÙNG CLICK NÚT "SELECT BLAST"
+      | (x > 0 && x < 200 && y > -75 && y < -25) -> do
           let newTank = Just Blast
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
-      
-      -- VÙNG CLICK NÚT "READY" (cho y = -200)
-      | (x > -100 && x < 100 && y > -225 && y < -175) -> do -- "Ready"
+      -- VÙNG CLICK NÚT "READY"
+      | (x > -100 && x < 100 && y > -225 && y < -175) -> do
           let newReady = not (ldMyReady ld)
           sendTcpPacket h (CTP_UpdateLobbyState (ldMyTank ld) newReady)
           pure cState { csState = S_Lobby ld { ldMyReady = newReady } }
-
-      -- VÙNG CLICK NÚT "BACK" (cho y = -260)
+      -- XỬ LÝ NÚT BACK (tọa độ y = -260)
       | (x > -100 && x < 100 && y > -285 && y < -235) -> do
           putStrLn "[Input] Back (Leaving Room)..."
           -- Gửi yêu cầu rời phòng. Server sẽ phản hồi bằng STP_ShowMenu
