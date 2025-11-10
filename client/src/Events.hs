@@ -147,9 +147,12 @@ handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = 
     (EventKey (SpecialKey KeyBackspace) Down _ _) -> 
       pure cState { csState = S_RoomSelection (if null roomId then "" else init roomId) }
     (EventKey (MouseButton LeftButton) Down _ (x, y))
+      -- VÙNG CLICK NÚT "Create Room" (cho y = 0)
       | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
           sendTcpPacket h CTP_CreateRoom
           pure cState
+      
+      -- VÙNG CLICK NÚT "Join Room" (cho y = -60)
       | (x > -100 && x < 100 && y > -85 && y < -35) -> do 
           sendTcpPacket h (CTP_JoinRoom roomId)
           pure cState
@@ -165,18 +168,31 @@ handleInputLobby :: Event -> ClientState -> IO ClientState
 handleInputLobby event cState@(ClientState { csTcpHandle = h, csState = (S_Lobby ld) }) =
   case event of
     (EventKey (MouseButton LeftButton) Down _ (x, y))
+      -- VÙNG CLICK NÚT "Select Rapid" (cho y = -50)
       | (x > -200 && x < 0 && y > -75 && y < -25) -> do -- "Select Rapid"
           let newTank = Just Rapid
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
+      
+      --- VÙNG CLICK NÚT "Select Blast" (cho y = -50)
       | (x > 0 && x < 200 && y > -75 && y < -25) -> do -- "Select Blast"
           let newTank = Just Blast
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
+      
+      -- VÙNG CLICK NÚT "READY" (cho y = -200)
       | (x > -100 && x < 100 && y > -225 && y < -175) -> do -- "Ready"
           let newReady = not (ldMyReady ld)
           sendTcpPacket h (CTP_UpdateLobbyState (ldMyTank ld) newReady)
           pure cState { csState = S_Lobby ld { ldMyReady = newReady } }
+
+      -- VÙNG CLICK NÚT "BACK" (cho y = -260)
+      | (x > -100 && x < 100 && y > -285 && y < -235) -> do
+          putStrLn "[Input] Back (Leaving Room)..."
+          -- Gửi yêu cầu rời phòng. Server sẽ phản hồi bằng STP_ShowMenu
+          sendTcpPacket h CTP_LeaveRoom
+          -- Client không tự ý đổi state, mà chờ phản hồi từ server
+          pure cState
     _ -> pure cState
 handleInputLobby _ cState = pure cState
 
