@@ -150,20 +150,44 @@ handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = 
       pure cState { csState = S_RoomSelection (rsd { rsdRoomId = if null roomId then "" else init roomId }) }
 
     (EventKey (MouseButton LeftButton) Down _ (x, y))
-      -- Create Room (xóa lỗi cũ nếu có)
+      
+      -- Nút Create Room (phiên bản 'dev' đã thắng)
       | (x > -100 && x < 100 && y > -25 && y < 25) -> do 
-          sendTcpPacket h CTP_CreateRoom
+          stopDiscoveryLoop mvar -- Dừng scan
+          sendTcpPacket h (CTP_CreateRoom (rsdIsPublic rsd))
           pure cState { csState = S_RoomSelection (rsd { rsdError = "" }) }
-
-      -- Join Room (xóa lỗi cũ khi thử join)
+      
+      -- Nút Join Room
       | (x > -100 && x < 100 && y > -85 && y < -35) -> do 
+          stopDiscoveryLoop mvar -- Dừng scan
           sendTcpPacket h (CTP_JoinRoom roomId)
           pure cState { csState = S_RoomSelection (rsd { rsdError = "" }) }
 
-      -- Back to Menu (xóa lỗi cũ)
+      -- Nút Back
       | (x > -100 && x < 100 && y > -235 && y < -185) -> do
+          stopDiscoveryLoop mvar -- Dừng scan
           putStrLn "[Input] Back to Menu"
           pure cState { csState = S_Menu }
+          
+      -- NÚT GẠT PUBLIC (x=50, y=-20)
+      | (x > 175 && x < 225 && y > -162.5 && y < -137.5) -> do -- (Tọa độ (200, -150), size (40, 25))
+          pure cState { csState = S_RoomSelection (rsd { rsdIsPublic = not (rsdIsPublic rsd) }) }
+      
+      -- CLICK VÀO DANH SÁCH PHÒNG
+      | (x > -340 && x < 0 && y < -310 && y > -450) -> do
+          let yBase = -310
+          let yClick = y
+          let idx = floor ((yBase - yClick) / 25)
+          let discoveredRooms = Set.toList (rsdDiscoveredRooms rsd)
+          
+          if idx >= 0 && idx < length discoveredRooms
+            then 
+              let clickedRoom = discoveredRooms !! idx
+              in pure cState { csState = S_RoomSelection (rsd { rsdRoomId = drRoomId clickedRoom }) }
+            else 
+              pure cState
+              
+      | otherwise -> pure cState
     _ -> pure cState
 handleInputRoomSelection _ cState = pure cState -- Fallback
 
@@ -172,18 +196,31 @@ handleInputLobby :: Event -> ClientState -> IO ClientState
 handleInputLobby event cState@(ClientState { csTcpHandle = h, csState = (S_Lobby ld) }) =
   case event of
     (EventKey (MouseButton LeftButton) Down _ (x, y))
+      -- VÙNG CLICK NÚT "Select Rapid" (cho y = -50)
       | (x > -200 && x < 0 && y > -75 && y < -25) -> do -- "Select Rapid"
           let newTank = Just Rapid
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
+      
+      --- VÙNG CLICK NÚT "Select Blast" (cho y = -50)
       | (x > 0 && x < 200 && y > -75 && y < -25) -> do -- "Select Blast"
           let newTank = Just Blast
           sendTcpPacket h (CTP_UpdateLobbyState newTank (ldMyReady ld))
           pure cState { csState = S_Lobby ld { ldMyTank = newTank } }
+      
+      -- VÙNG CLICK NÚT "READY" (cho y = -200)
       | (x > -100 && x < 100 && y > -225 && y < -175) -> do -- "Ready"
           let newReady = not (ldMyReady ld)
           sendTcpPacket h (CTP_UpdateLobbyState (ldMyTank ld) newReady)
           pure cState { csState = S_Lobby ld { ldMyReady = newReady } }
+
+      -- VÙNG CLICK NÚT "BACK" (cho y = -260)
+      | (x > -100 && x < 100 && y > -285 && y < -235) -> do
+          putStrLn "[Input] Back (Leaving Room)..."
+          -- Gửi yêu cầu rời phòng. Server sẽ phản hồi bằng STP_ShowMenu
+          sendTcpPacket h CTP_LeaveRoom
+          -- Client không tự ý đổi state, mà chờ phản hồi từ server
+          pure cState
     _ -> pure cState
 handleInputLobby _ cState = pure cState
 
