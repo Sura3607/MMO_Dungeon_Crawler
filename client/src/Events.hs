@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 module Events (handleInputIO) where
 
 import Graphics.Gloss.Interface.IO.Game
@@ -53,7 +54,7 @@ handleInputLogin :: Event -> ClientState -> IO ClientState
 handleInputLogin event cState@(ClientState { csTcpHandle = h, csState = (S_Login ld) }) =
   case event of
     -- Xử lý gõ phím
-    (EventKey (Char c) Down _ _) -> 
+    (EventKey (Char c) Down _ _) | c >= ' ' ->
       pure $ cState { csState = S_Login updateField }
       where 
         updateField = case ldActiveField ld of
@@ -61,6 +62,13 @@ handleInputLogin event cState@(ClientState { csTcpHandle = h, csState = (S_Login
                         PassField -> ld { ldPassword = ldPassword ld ++ [c] }
 
     -- Xử lý Backspace
+    (EventKey (Char '\b') Down _ _) ->
+      pure $ cState { csState = S_Login (updateField) }
+      where 
+        updateField = case ldActiveField ld of
+          UserField -> ld { ldUsername = if null (ldUsername ld) then "" else init (ldUsername ld) }
+          PassField -> ld { ldPassword = if null (ldPassword ld) then "" else init (ldPassword ld) }
+    
     (EventKey (SpecialKey KeyBackspace) Down _ _) ->
       pure $ cState { csState = S_Login (updateField) }
       where 
@@ -144,10 +152,10 @@ handleInputRoomSelection :: Event -> ClientState -> IO ClientState
 handleInputRoomSelection event cState@(ClientState { csTcpHandle = h, csState = (S_RoomSelection rsd) }) =
   let roomId = rsdRoomId rsd -- Lấy room ID cũ
   in case event of
-    (EventKey (Char c) Down _ _) -> 
+    (EventKey (Char c) Down _ _) | c >= ' ' ->
       pure cState { csState = S_RoomSelection (rsd { rsdRoomId = roomId ++ [c] }) }
 
-    (EventKey (SpecialKey KeyBackspace) Down _ _) -> 
+    (EventKey (Char '\b') Down _ _) -> 
       pure cState { csState = S_RoomSelection (rsd { rsdRoomId = if null roomId then "" else init roomId }) }
 
     (EventKey (MouseButton LeftButton) Down _ (x, y))
@@ -214,8 +222,6 @@ handleInputLobby event cState@(ClientState { csTcpHandle = h, csState = (S_Lobby
           let newReady = not (ldMyReady ld)
           sendTcpPacket h (CTP_UpdateLobbyState (ldMyTank ld) newReady)
           pure cState { csState = S_Lobby ld { ldMyReady = newReady } }
-
-      -- VÙNG CLICK NÚT "BACK" (cho y = -260)
       | (x > -100 && x < 100 && y > -285 && y < -235) -> do
           putStrLn "[Input] Back (Leaving Room)..."
           -- Gửi yêu cầu rời phòng. Server sẽ phản hồi bằng STP_ShowMenu
